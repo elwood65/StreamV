@@ -293,7 +293,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
         determinedName = `Series Stream (Direct) (S${obj.season}E${obj.episode})`;
       }
     }
-
+    
     console.log(`Final stream name: "${determinedName}"`);
     
     return [{
@@ -307,8 +307,13 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     if (error instanceof Error) {
       message = error.message;
     }
-    console.error(`Error in getStreamContent for ${id} (${type}):`, message, error);
-    return null;
+    console.error(`Stream extraction error: ${message}`, error);
+    
+    return [{
+      name: type === 'movie' ? 'Fallback Movie Stream' : 'Fallback Series Stream',
+      streamUrl: '', // Stream vuoto che sarà ignorato perché streamUrl == null
+      referer: finalReferer
+    }];
   }
 }
 export { getStreamContent };
