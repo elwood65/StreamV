@@ -112,6 +112,8 @@ export async function getUrl(id: string, type: ContentType): Promise<string | nu
 }
 
 async function getStreamContent(id: string, type: ContentType): Promise<VixCloudStreamInfo[] | null> {
+  console.log(`Extracting stream for ${id} (${type})`);
+  
   // First, get the target URL on vixsrc.to (this is needed for both proxy and direct modes)
   const targetUrl = await getUrl(id, type);
   if (!targetUrl) {
@@ -254,7 +256,9 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     baseTitle = type === 'movie' ? 
       await getMovieTitle(id) : 
       await getSeriesTitle(id);
-
+    
+    console.log(`TMDB title result: "${baseTitle}"`);
+  
     // Solo se TMDB fallisce, prova a usare il titolo dalla pagina
     if (!baseTitle) {
       baseTitle = $("title").text().trim();
@@ -266,6 +270,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           .replace(" - Streaming", "")
           .replace(/\s*\|\s*.*$/, ""); // Rimuove qualsiasi cosa dopo il simbolo |
       }
+      console.log(`Page title after cleanup: "${baseTitle}"`);
     }
 
     // 2. Determina il nome finale, gestendo esplicitamente il caso null
@@ -289,6 +294,8 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       }
     }
 
+    console.log(`Final stream name: "${determinedName}"`);
+    
     return [{
       name: determinedName,
       streamUrl: finalStreamUrl,
