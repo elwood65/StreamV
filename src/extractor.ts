@@ -69,7 +69,7 @@ function getObject(id: string) {
     episode: arr[2]
   };
 }
-// code taken from https://github.com/mhdzumair/mediaflow-proxy
+
 async function getTmdbIdFromImdbId(imdbId: string): Promise<string | null> {
   if (!TMDB_API_KEY) { 
     console.error("TMDB_API_KEY is not configured.");
@@ -165,6 +165,38 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(targetUrl)}`;
     console.log(`Proxy mode active. Generated proxy URL for ${id}: ${proxyStreamUrl}`);
 
+    // Nuova funzione asincrona per ottenere l'URL m3u8 finale
+    async function getActualStreamUrl(proxyUrl: string): Promise<string> {
+      try {
+        // In modalità "debug" non seguiamo i reindirizzamenti e otteniamo l'URL m3u8 dalla risposta JSON
+        const debugUrl = proxyUrl.replace('redirect_stream=true', 'redirect_stream=false');
+        
+        console.log(`Fetching stream URL from: ${debugUrl}`);
+        const response = await fetch(debugUrl);
+        
+        if (!response.ok) {
+          console.error(`Failed to fetch stream details: ${response.status}`);
+          return proxyUrl; // Fallback al proxy URL originale
+        }
+        
+        const data = await response.json();
+        console.log(`MFP Response:`, data);
+        
+        // Estrai l'URL dallo stream - la struttura dipende dalla risposta MFP
+        // Questo è un esempio - adatta in base alla risposta effettiva di MFP
+        if (data && data.stream_url) {
+          console.log(`Extracted m3u8 URL: ${data.stream_url}`);
+          return data.stream_url;
+        } else {
+          console.warn(`Couldn't find stream_url in MFP response, using proxy URL`);
+          return proxyUrl; // Fallback al proxy URL originale
+        }
+      } catch (error) {
+        console.error(`Error extracting m3u8 URL: ${error}`);
+        return proxyUrl; // Fallback al proxy URL originale
+      }
+    }
+
     const tmdbApiTitle: string | null = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
 
     let finalNameForProxy: string;
@@ -184,7 +216,11 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
         finalNameForProxy = `Series Stream (Proxy) (S${obj.season}E${obj.episode})`;
       }
     }
-    return [{ name: finalNameForProxy, streamUrl: proxyStreamUrl, referer: targetUrl }];
+    // Ottieni l'URL m3u8 finale
+    const finalStreamUrl = await getActualStreamUrl(proxyStreamUrl);
+    console.log(`Final m3u8 URL: ${finalStreamUrl}`);
+    
+    return [{ name: finalNameForProxy, streamUrl: finalStreamUrl, referer: targetUrl }];
   }
 
   // --- Direct Extraction Mode (if proxy not configured) ---
