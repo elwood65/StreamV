@@ -96,18 +96,63 @@ async function getTmdbIdFromImdbId(imdbId: string): Promise<string | null> {
   }
 }
 
+// 1. Aggiungi la funzione di verifica dei TMDB ID
+async function checkTmdbIdOnVixSrc(tmdbId: string, type: ContentType): Promise<boolean> {
+  const vixSrcApiType = type === 'movie' ? 'movie' : 'tv'; // VixSrc usa 'tv' per le serie
+  const listUrl = `${VIXCLOUD_SITE_ORIGIN}/api/list/${vixSrcApiType}?lang=it`;
+
+  try {
+    console.log(`VIX_CHECK: Checking TMDB ID ${tmdbId} of type ${vixSrcApiType} against VixSrc list: ${listUrl}`);
+    const response = await fetch(listUrl);
+    if (!response.ok) {
+      console.error(`VIX_CHECK: Failed to fetch VixSrc list for type ${vixSrcApiType}, status: ${response.status}`);
+      return false; // Se non possiamo ottenere la lista, assumiamo che non esista per sicurezza
+    }
+    const data = await response.json();
+    // L'API restituisce un array di oggetti, ognuno con una proprietà 'id' che è l'ID TMDB
+    if (data && Array.isArray(data)) {
+      const exists = data.some((item: any) => item.tmdb_id && item.tmdb_id.toString() === tmdbId.toString());
+      console.log(`VIX_CHECK: TMDB ID ${tmdbId} ${exists ? 'found' : 'NOT found'} in VixSrc list.`);
+      return exists;
+    } else {
+      console.error(`VIX_CHECK: VixSrc list for type ${vixSrcApiType} is not in the expected format.`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`VIX_CHECK: Error checking TMDB ID ${tmdbId} on VixSrc:`, error);
+    return false; // In caso di errore, assumiamo che non esista
+  }
+}
+
+// 2. Modifica la funzione getUrl per rimuovere ?lang=it e aggiungere la verifica
 export async function getUrl(id: string, type: ContentType): Promise<string | null> {
   if (type == "movie") {
-    const tmdbId = await getTmdbIdFromImdbId(id);
+    const imdbIdForMovie = id; // L'ID passato è l'IMDB ID per i film
+    const tmdbId = await getTmdbIdFromImdbId(imdbIdForMovie);
     if (!tmdbId) return null;
-    return `${VIXCLOUD_SITE_ORIGIN}/movie/${tmdbId}/?lang=it`;
+    
+    // Verifica se l'ID TMDB del film esiste su VixSrc
+    const existsOnVixSrc = await checkTmdbIdOnVixSrc(tmdbId, type);
+    if (!existsOnVixSrc) {
+      console.log(`TMDB ID ${tmdbId} (from IMDB ${imdbIdForMovie}) for movie not found in VixSrc list. Skipping.`);
+      return null;
+    }
+    
+    return `${VIXCLOUD_SITE_ORIGIN}/movie/${tmdbId}/`; // Rimosso ?lang=it
   } else {
-    // Series: https://vixsrc.to/tv/tmdbkey/season/episode/?lang=it
+    // Series: https://vixsrc.to/tv/tmdbkey/season/episode/
     const obj = getObject(id);
     const tmdbSeriesId = await getTmdbIdFromImdbId(obj.id);
     if (!tmdbSeriesId) return null;
-
-    return `${VIXCLOUD_SITE_ORIGIN}/tv/${tmdbSeriesId}/${obj.season}/${obj.episode}/?lang=it`;
+    
+    // Verifica se l'ID TMDB della serie esiste su VixSrc
+    const existsOnVixSrc = await checkTmdbIdOnVixSrc(tmdbSeriesId, type);
+    if (!existsOnVixSrc) {
+      console.log(`TMDB ID ${tmdbSeriesId} (from IMDB ${obj.id}) for series not found in VixSrc list. Skipping.`);
+      return null;
+    }
+    
+    return `${VIXCLOUD_SITE_ORIGIN}/tv/${tmdbSeriesId}/${obj.season}/${obj.episode}/`; // Rimosso ?lang=it
   }
 }
 
@@ -182,13 +227,40 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
         const data = await response.json();
         console.log(`MFP Response:`, data);
         
-        // Estrai l'URL dallo stream - la struttura dipende dalla risposta MFP
-        // Questo è un esempio - adatta in base alla risposta effettiva di MFP
-        if (data && data.stream_url) {
-          console.log(`Extracted m3u8 URL: ${data.stream_url}`);
-          return data.stream_url;
+        // CORREZIONE: usa mediaflow_proxy_url invece di stream_url
+        if (data && data.mediaflow_proxy_url) {
+          // Costruisci l'URL completo includendo i parametri necessari
+          let finalUrl = data.mediaflow_proxy_url;
+          
+          // Aggiungi i parametri di query se presenti
+          if (data.query_params) {
+            const params = new URLSearchParams();
+            for (const [key, value] of Object.entries(data.query_params)) {
+              params.append(key, value as string);
+            }
+            
+            // Se l'URL ha già parametri, aggiungi & altrimenti ?
+            finalUrl += (finalUrl.includes('?') ? '&' : '?') + params.toString();
+          }
+          
+          // Aggiungi il parametro d per il destination_url
+          if (data.destination_url) {
+            const destParam = 'd=' + encodeURIComponent(data.destination_url);
+            finalUrl += (finalUrl.includes('?') ? '&' : '?') + destParam;
+          }
+          
+          // Aggiungi gli header come parametri h_
+          if (data.request_headers) {
+            for (const [key, value] of Object.entries(data.request_headers)) {
+              const headerParam = `h_${key}=${encodeURIComponent(value as string)}`;
+              finalUrl += '&' + headerParam;
+            }
+          }
+          
+          console.log(`Extracted proxy m3u8 URL: ${finalUrl}`);
+          return finalUrl;
         } else {
-          console.warn(`Couldn't find stream_url in MFP response, using proxy URL`);
+          console.warn(`Couldn't find mediaflow_proxy_url in MFP response, using proxy URL`);
           return proxyUrl; // Fallback al proxy URL originale
         }
       } catch (error) {
