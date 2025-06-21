@@ -50,7 +50,7 @@ Questo metodo ti permette di avere la tua istanza personale dell'addon online, g
     * Torna alla scheda `Files` del tuo Space.
     * Clicca su `Add file` e seleziona `Create a new file`.
     * Chiamalo `Dockerfile` (senza estensioni, con la "D" maiuscola).
-    * Incolla all'interno il contenuto del [Dockerfile](https://github.com/emaschi5/vix/blob/main/Dockerfile) che trovi nel repository ufficiale di StreamViX.
+    * Incolla all'interno il contenuto del [Dockerfile](https://github.com/qwertyuiop8899/StreamV/blob/main/Dockerfile) che trovi nel repository ufficiale di StreamViX.
     * Clicca su `Commit new file to main`.
 
 4.  **Build e Deploy 🚀**
@@ -83,7 +83,7 @@ services:
       args:
         # Argomenti passati al Dockerfile durante la build per clonare il repo.
         # Puoi sovrascriverli con un file .env o da terminale.
-        GIT_REPO_URL: ${GIT_REPO_URL:https://github.com/emaschi5/StreamViX.git}
+        GIT_REPO_URL: ${GIT_REPO_URL:https://github.com/qwertyuiop8899/StreamV.git}
         GIT_BRANCH: ${GIT_BRANCH:-main}
     environment:
       TMDB_API_KEY: ""
@@ -144,6 +144,7 @@ Crea il file `.env`: Crea un file chiamato `.env` nella root del progetto (nella
     TMDB_API_KEY=la_tua_chiave_api_di_tmdb
     MFP_URL=[https://username-mfp.hf.space](https://username-mfp.hf.space)
     MFP_PSW=la_tua_password_mfp
+    PORT="portacustom"
 
 4.  **Compila il progetto:**
     ```
