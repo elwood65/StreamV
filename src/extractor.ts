@@ -295,7 +295,8 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     }
     
     console.log(`Final stream name: "${determinedName}"`);
-    
+    console.log(`Final stream URL: "${finalStreamUrl}"`); // Aggiungi questo log per l'URL
+
     return [{
       name: determinedName,
       streamUrl: finalStreamUrl,
@@ -329,10 +330,12 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       }
     }
     
-    // Ritorna un URL fittizio ma non vuoto per forzare la visualizzazione in Stremio
+    // Aggiungi questo log per l'URL di fallback
+    console.log(`Fallback stream URL (error case): "${targetUrl}"`);
+
     return [{
       name: fallbackName,
-      streamUrl: 'https://example.com/error-stream', // URL fittizio non vuoto
+      streamUrl: targetUrl,
       referer: finalReferer
     }];
   }
