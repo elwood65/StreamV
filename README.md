@@ -1,3 +1,7 @@
+Thanks to https://github.com/ThEditor https://github.com/ThEditor/stremsrc for the code
+and thank to https://github.com/mhdzumair for the extractor code https://github.com/mhdzumair/mediaflow-proxy
+
+
 # 🎬 StreamViX
 
 Un addon per Stremio che estrae sorgenti streaming dal sito vixsrc per permetterti di guardare film e serie TV con la massima semplicità.
