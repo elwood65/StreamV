@@ -2,11 +2,11 @@ import { addonBuilder, Manifest, Stream } from "stremio-addon-sdk";
 import { getStreamContent, VixCloudStreamInfo } from "./extractor";
 
 const manifest: Manifest = {
-    id: "org.stremio.vixsrc",
+    id: "org.stremio.vixcloud",
     version: "0.1.0",
     name: "StreamViX",
     description: "Addon for Vixsrc streams.", 
-    icon: "https://github.com/qwertyuiop8899/StreamV/blob/main/icon.png?raw=true",
+    icon: "/public/icon.png", // Aggiungi questa riga con il percorso della tua icona
     background: "/public/backround.png", // Aggiungi /public/ qui
     types: ["movie", "series"],
     idPrefixes: ["tt"],
@@ -35,15 +35,19 @@ builder.defineStreamHandler(
       let streams: Stream[] = [];
       for (const st of res) {
         if (st.streamUrl == null) continue;
+        
+        // Aggiungi questo debug
+        console.log(`Adding stream with title: "${st.name}"`);
+        
         streams.push({
-          title: st.name,
+          title: st.name, // Assicurati che questo campo sia corretto
+          name: st.name,  // Prova ad aggiungere anche questo campo
           url: st.streamUrl,
-          // behaviorHints: { notWebReady: true } // Retain if m3u8 might not be web-ready
           behaviorHints: {
             notWebReady: true,
           },
           proxyHeaders: { "request": { "Referer": st.referer } }
-        } as Stream); // Explicitly cast to Stream
+        } as Stream);
       }
       return { streams: streams };
     } catch (error) {
