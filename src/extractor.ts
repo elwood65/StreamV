@@ -96,58 +96,18 @@ async function getTmdbIdFromImdbId(imdbId: string): Promise<string | null> {
   }
 }
 
-// Nuova funzione helper per verificare l'esistenza dell'ID TMDB su VixSrc
-async function checkTmdbIdOnVixSrc(tmdbId: string, type: ContentType): Promise<boolean> {
-  const vixSrcApiType = type === 'movie' ? 'movie' : 'tv'; // VixSrc usa 'tv' per le serie
-  const listUrl = `${VIXCLOUD_SITE_ORIGIN}/api/list/${vixSrcApiType}?lang=it`;
-
-  try {
-    console.log(`VIX_CHECK: Checking TMDB ID ${tmdbId} of type ${vixSrcApiType} against VixSrc list: ${listUrl}`);
-    const response = await fetch(listUrl);
-    if (!response.ok) {
-      console.error(`VIX_CHECK: Failed to fetch VixSrc list for type ${vixSrcApiType}, status: ${response.status}`);
-      return false; // Se non possiamo ottenere la lista, assumiamo che non esista per sicurezza
-    }
-    const data = await response.json();
-    // L'API restituisce un array di oggetti, ognuno con una proprietà 'id' che è l'ID TMDB
-    if (data && Array.isArray(data)) {
-      const exists = data.some((item: any) => item.tmdb_id && item.tmdb_id.toString() === tmdbId.toString()); // CORREZIONE: usa item.tmdb_id
-      console.log(`VIX_CHECK: TMDB ID ${tmdbId} ${exists ? 'found' : 'NOT found'} in VixSrc list.`);
-      return exists;
-    } else {
-      console.error(`VIX_CHECK: VixSrc list for type ${vixSrcApiType} is not in the expected format.`);
-      return false;
-    }
-  } catch (error) {
-    console.error(`VIX_CHECK: Error checking TMDB ID ${tmdbId} on VixSrc:`, error);
-    return false; // In caso di errore, assumiamo che non esista
-  }
-}
-
 export async function getUrl(id: string, type: ContentType): Promise<string | null> {
   if (type == "movie") {
-    const imdbIdForMovie = id; // L'ID passato è l'IMDB ID per i film
-    const tmdbId = await getTmdbIdFromImdbId(imdbIdForMovie);
+    const tmdbId = await getTmdbIdFromImdbId(id);
     if (!tmdbId) return null;
-    // Verifica se l'ID TMDB del film esiste su VixSrc
-    const existsOnVixSrc = await checkTmdbIdOnVixSrc(tmdbId, type);
-    if (!existsOnVixSrc) {
-      console.log(`TMDB ID ${tmdbId} (from IMDB ${imdbIdForMovie}) for movie not found in VixSrc list. Skipping.`);
-      return null;
-    }
-    return `${VIXCLOUD_SITE_ORIGIN}/movie/${tmdbId}/`; //?lang=it
+    return `${VIXCLOUD_SITE_ORIGIN}/movie/${tmdbId}/?lang=it`;
   } else {
     // Series: https://vixsrc.to/tv/tmdbkey/season/episode/?lang=it
     const obj = getObject(id);
-    const tmdbSeriesId = await getTmdbIdFromImdbId(obj.id); // Converti IMDB ID della serie in TMDB ID
+    const tmdbSeriesId = await getTmdbIdFromImdbId(obj.id);
     if (!tmdbSeriesId) return null;
-    // Verifica se l'ID TMDB della serie esiste su VixSrc
-    const existsOnVixSrc = await checkTmdbIdOnVixSrc(tmdbSeriesId, type);
-    if (!existsOnVixSrc) {
-      console.log(`TMDB ID ${tmdbSeriesId} (from IMDB ${obj.id}) for series not found in VixSrc list. Skipping.`);
-      return null;
-    }
-    return `${VIXCLOUD_SITE_ORIGIN}/tv/${tmdbSeriesId}/${obj.season}/${obj.episode}/`;    //?lang=it
+
+    return `${VIXCLOUD_SITE_ORIGIN}/tv/${tmdbSeriesId}/${obj.season}/${obj.episode}/?lang=it`;
   }
 }
 
@@ -287,10 +247,25 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
 
     // --- Inizio della nuova logica per il titolo ---
 
-    // 1. Ottieni il titolo di base, che può essere stringa o null
-    let baseTitle: string | null = $("title").text().trim();
+    // 1. Ottieni il titolo di base, dando priorità a TMDB
+    let baseTitle: string | null = null;
+
+    // Prima prova a ottenere il titolo dalle API TMDB
+    baseTitle = type === 'movie' ? 
+      await getMovieTitle(id) : 
+      await getSeriesTitle(id);
+
+    // Solo se TMDB fallisce, prova a usare il titolo dalla pagina
     if (!baseTitle) {
-      baseTitle = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
+      baseTitle = $("title").text().trim();
+      // Pulisci ulteriormente il titolo rimuovendo parti comuni nei siti di streaming
+      if (baseTitle) {
+        baseTitle = baseTitle
+          .replace(" - VixSrc", "")
+          .replace(" - Guarda Online", "")
+          .replace(" - Streaming", "")
+          .replace(/\s*\|\s*.*$/, ""); // Rimuove qualsiasi cosa dopo il simbolo |
+      }
     }
 
     // 2. Determina il nome finale, gestendo esplicitamente il caso null
