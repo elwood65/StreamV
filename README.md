@@ -162,3 +162,4 @@ Questo progetto è inteso esclusivamente a scopo educativo. L'utente è l'unico 
 
 
 Thanks to https://github.com/ThEditor https://github.com/ThEditor/stremsrc for the code
+and thank to https://github.com/mhdzumair for the extractor code https://github.com/mhdzumair/mediaflow-proxy
