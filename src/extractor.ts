@@ -309,9 +309,30 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     }
     console.error(`Stream extraction error: ${message}`, error);
     
+    // Otteniamo comunque il titolo dal TMDB
+    const tmdbApiTitle: string | null = type === 'movie' ? 
+      await getMovieTitle(id) : 
+      await getSeriesTitle(id);
+    
+    let fallbackName: string;
+    if (tmdbApiTitle) {
+      fallbackName = tmdbApiTitle;
+      if (type !== 'movie') {
+        const obj = getObject(id);
+        fallbackName += ` (S${obj.season}E${obj.episode})`;
+      }
+    } else {
+      fallbackName = type === 'movie' ? 'Movie Stream (Error)' : 'Series Stream (Error)';
+      if (type !== 'movie') {
+        const obj = getObject(id);
+        fallbackName += ` (S${obj.season}E${obj.episode})`;
+      }
+    }
+    
+    // Ritorna un URL fittizio ma non vuoto per forzare la visualizzazione in Stremio
     return [{
-      name: type === 'movie' ? 'Fallback Movie Stream' : 'Fallback Series Stream',
-      streamUrl: '', // Stream vuoto che sarà ignorato perché streamUrl == null
+      name: fallbackName,
+      streamUrl: 'https://example.com/error-stream', // URL fittizio non vuoto
       referer: finalReferer
     }];
   }
