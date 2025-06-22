@@ -66,7 +66,7 @@ const server = http.createServer((req, res) => {
       if (ext === '.css') contentType = 'text/css';
       if (ext === '.js') contentType = 'text/javascript';
       
-      res.writeHead(200, { 'Content-Type': contentType });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(content);
     }
   }
@@ -100,59 +100,70 @@ const server = http.createServer((req, res) => {
           // Costruisci lo stesso oggetto di risposta che abbiamo in addon.ts
           const mfpUrl = process.env.MFP_URL;
           const mfpPsw = process.env.MFP_PSW;
-          const showBothLinksGlobal = parsedUrl.query.showBothLinks === 'true';
           
-          const streams = streamResults.flatMap(st => {
-            if (!st.streamUrl) return [];
+          // Estrai il parametro showBothLinks dalla query della richiesta corrente (non dal manifest)
+          const showBothLinksGlobal = parsedUrl.query.showBothLinks === 'true';
+          console.log(`showBothLinks = ${showBothLinksGlobal}`); // DEBUG
+          
+          const streams = [];
+          
+          // Processa ogni risultato dello streaming
+          for (const st of streamResults) {
+            // Ignora i risultati senza URL
+            if (!st.streamUrl) continue;
             
-            const result = [];
-            
-            // CORREZIONE 1: Aggiungi stream originale senza proxy
-            result.push({
-              title: st.name ?? "Original Source",  // Solo il nome originale
-              url: st.streamUrl,  // URL originale senza proxy
-              behaviorHints: { notWebReady: true }
-            });
-            
-            // Se showBothLinks è true, aggiungi un secondo stream con proxy
-            if (showBothLinksGlobal && mfpUrl && mfpPsw) {
-              const params = new URLSearchParams({
-                api_password: mfpPsw,
-                d: st.streamUrl
+            if (showBothLinksGlobal) {
+              // Caso 1: Mostra entrambi i link (originale + proxy)
+              
+              // Prima aggiungiamo lo stream originale
+              streams.push({
+                title: st.name ?? "Original Source",
+                url: st.streamUrl,
+                behaviorHints: { notWebReady: true }
               });
               
-              // CORREZIONE 2: Aggiungi stream con proxy, mantenendo (Proxy) nel titolo
-              result.push({
-                title: `${st.name ?? "Original Source"} (Proxy)`, 
-                url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                behaviorHints: { notWebReady: false }
-              });
-            } 
-            // Se showBothLinks è false ma MFP è configurato, sostituisci lo stream originale con quello proxy
-            else if (!showBothLinksGlobal && mfpUrl && mfpPsw) {
-              // Rimuovi lo stream originale
-              result.pop();
+              // Poi aggiungiamo lo stream proxy se configurato
+              if (mfpUrl && mfpPsw) {
+                const params = new URLSearchParams({
+                  api_password: mfpPsw,
+                  d: st.streamUrl
+                });
+                
+                streams.push({
+                  title: `${st.name ?? "Original Source"} (Proxy)`,
+                  url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                  behaviorHints: { notWebReady: false }
+                });
+              }
+            } else {
+              // Caso 2: Mostra un solo link (originale o proxy)
               
-              const params = new URLSearchParams({
-                api_password: mfpPsw,
-                d: st.streamUrl
-              });
-              
-              // CORREZIONE 3: Usa solo lo stream proxy, mantenendo (Proxy) nel titolo
-              result.push({
-                title: `${st.name ?? "Original Source"} (Proxy)`,
-                url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                behaviorHints: { notWebReady: false }
-              });
+              // Se MFP è configurato, mostra solo il proxy
+              if (mfpUrl && mfpPsw) {
+                const params = new URLSearchParams({
+                  api_password: mfpPsw,
+                  d: st.streamUrl
+                });
+                
+                streams.push({
+                  title: `${st.name ?? "Original Source"} (Proxy)`,
+                  url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                  behaviorHints: { notWebReady: false }
+                });
+              } else {
+                // Altrimenti mostra solo l'originale
+                streams.push({
+                  title: st.name ?? "Original Source",
+                  url: st.streamUrl,
+                  behaviorHints: { notWebReady: true }
+                });
+              }
             }
-            // Non c'è un caso "else if (showBothLinksGlobal && (!mfpUrl || !mfpPsw))" 
-            // perché se mancano le config MFP, mostriamo solo l'originale
-            
-            return result;
-          });
+          }
           
           // Debug
           console.log(`Generated ${streams.length} streams`);
+          console.log(`Stream URLs: ${streams.map(s => s.url).join('\n')}`);
           
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ streams }));
