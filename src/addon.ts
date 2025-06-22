@@ -6,7 +6,7 @@ import * as path from 'path';
 // Base manifest configuration
 const baseManifest: Manifest = {
     id: "org.stremio.vixcloud",
-    version: "0.1.0",
+    version: "1.0.1",
     name: "StreamViX",
     description: "Addon for Vixsrc streams.", 
     icon: "/public/icon.png",
