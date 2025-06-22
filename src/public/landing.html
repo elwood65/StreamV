@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html style="background: #000">
+<head>
+    <meta charset="utf-8">
+    <title>StreamViX - Stremio Addon</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-image: url('/public/backround.png');
+            background-size: cover;
+            background-position: center;
+        }
+        h1 { color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .logo {
+            width: 150px;
+            margin: 0 auto;
+            display: block;
+            border-radius: 25%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        button {
+            border: 0;
+            outline: 0;
+            color: #fff;
+            background: #8A5AAB;
+            padding: 13px 30px;
+            margin: 20px 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #9B6BC3;
+        }
+        .footer {
+            margin-top: 50px;
+            font-size: 14px;
+            color: #999;
+        }
+        .footer a {
+            color: #8A5AAB;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .option-container {
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 400px;
+            border-radius: 5px;
+        }
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .checkbox-wrapper input {
+            margin-right: 10px;
+        }
+    </style>
+    <script>
+        function installAddon() {
+            const showBothLinks = document.getElementById('showBothLinks').checked;
+            const manifestUrl = `${window.location.origin}/manifest.json?showBothLinks=${showBothLinks}`;
+            window.location = `stremio://${window.location.host}/manifest.json?showBothLinks=${showBothLinks}`;
+        }
+        
+        function copyManifestLink() {
+            const showBothLinks = document.getElementById('showBothLinks').checked;
+            const manifestUrl = `${window.location.origin}/manifest.json?showBothLinks=${showBothLinks}`;
+            navigator.clipboard.writeText(manifestUrl).then(() => {
+                alert('Link del manifest copiato negli appunti!');
+            });
+        }
+    </script>
+</head>
+<body>
+    <img class="logo" src="/public/icon.png" alt="StreamViX Logo" />
+    <h1>StreamViX</h1>
+    <h2>A custom VixSrc extractor for Stremio</h2>
+    
+    <div class="option-container">
+        <div class="checkbox-wrapper">
+            <input type="checkbox" id="showBothLinks" name="showBothLinks">
+            <label for="showBothLinks">Show Both Links (with and without proxy)</label>
+        </div>
+        <p>Se abilitato, mostra sia i link con proxy che senza proxy, anche quando il proxy non è disponibile</p>
+    </div>
+    
+    <button onclick="installAddon()">Aggiungi a Stremio</button>
+    <button onclick="copyManifestLink()">Copia URL Manifest</button>
+    
+    <div class="footer">
+        <p>StreamViX v1.0.0</p>
+    </div>
+</body>
+</html>
