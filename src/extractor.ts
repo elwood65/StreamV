@@ -20,6 +20,7 @@ export interface VixCloudStreamInfo {
   name: string;
   streamUrl: string;
   referer: string;
+  source: 'proxy' | 'direct';
 }
 
 /**
@@ -292,7 +293,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     const finalStreamUrl = await getActualStreamUrl(proxyStreamUrl);
     console.log(`Final m3u8 URL: ${finalStreamUrl}`);
     
-    return [{ name: finalNameForProxy, streamUrl: finalStreamUrl, referer: targetUrl }];
+    return [{ name: finalNameForProxy, streamUrl: finalStreamUrl, referer: targetUrl, source: 'proxy' }];
   }
 
   // --- Direct Extraction Mode (if proxy not configured) ---
@@ -412,6 +413,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       name: determinedName,
       streamUrl: finalStreamUrl,
       referer: finalReferer,
+      source: 'direct'
     }];
 
   } catch (error) {
