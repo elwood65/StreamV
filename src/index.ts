@@ -5,6 +5,7 @@ dotenv.config();
 
 import { serveHTTP } from "stremio-addon-sdk";
 import { addon, setShowBothLinks } from "./addon";
+import { getStreamContent } from "./extractor";
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
@@ -77,12 +78,75 @@ const server = http.createServer((req, res) => {
     const id = parsedUrl.pathname.split('/')[3]; // Ottieni il terzo segmento
     
     if (type && id) {
-      addonInterface.methods.stream({ type, id })
-        .then(streamResponse => {
+      // Invece di usare addonInterface.methods (che non esiste), 
+      // usiamo direttamente la funzione getStreamContent
+      getStreamContent(id, type)
+        .then((streamResults) => {
+          if (!streamResults) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ streams: [] }));
+          }
+          
+          // Costruisci lo stesso oggetto di risposta che abbiamo in addon.ts
+          const mfpUrl = process.env.MFP_URL;
+          const mfpPsw = process.env.MFP_PSW;
+          const showBothLinksGlobal = parsedUrl.query.showBothLinks === 'true';
+          
+          const streams = streamResults.flatMap(st => {
+            if (!st.streamUrl) return [];
+            
+            const result = [];
+            
+            // Aggiungi sempre lo stream originale
+            result.push({
+              title: st.name ?? "Original Source",
+              url: st.streamUrl,
+              behaviorHints: { notWebReady: true }
+            });
+            
+            // Se showBothLinks è true, aggiungi un secondo stream
+            if (showBothLinksGlobal) {
+              // Se MFP è configurato, usa quello
+              if (mfpUrl && mfpPsw) {
+                const params = new URLSearchParams({
+                  api_password: mfpPsw,
+                  d: st.streamUrl
+                });
+                
+                result.push({
+                  title: `${st.name ?? "Original Source"} (Proxy)`,
+                  url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                  behaviorHints: { notWebReady: false }
+                });
+              } 
+              // Altrimenti aggiungi un link fittizio
+              else {
+                result.push({
+                  title: `${st.name ?? "Original Source"} (Missing Proxy)`,
+                  url: st.streamUrl,
+                  behaviorHints: { notWebReady: true }
+                });
+              }
+            } 
+            // Se MFP è configurato e showBothLinks è false, sostituisci lo stream originale con quello proxy
+            else if (mfpUrl && mfpPsw) {
+              // Rimuovi lo stream originale
+              result.pop();
+              
+              result.push({
+                title: `${st.name ?? "Original Source"} (Proxy)`,
+                url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                behaviorHints: { notWebReady: false }
+              });
+            }
+            
+            return result;
+          });
+          
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify(streamResponse));
+          return res.end(JSON.stringify({ streams }));
         })
-        .catch(error => {
+        .catch((error: Error) => {
           console.error('Stream handler error:', error);
           res.writeHead(500, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ error: 'Stream handler failed' }));
