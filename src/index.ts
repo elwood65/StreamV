@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config(); 
 
 import { serveHTTP } from "stremio-addon-sdk";
-import { addon } from "./addon";
+import { addon, setShowBothLinks } from "./addon";
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
@@ -17,20 +17,23 @@ const port = process.env.PORT || 7860;
 console.log("MFP_URL from env:", process.env.MFP_URL);
 console.log("MFP_PSW from env:", process.env.MFP_PSW);
 
+// Ottieni l'interfaccia addon
 const addonInterface = addon.getInterface();
 
-// Crea un server personalizzato per intercettare le richieste e gestire la landing page
-http.createServer((req, res) => {
+// Crea un server HTTP personalizzato
+const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url || '', true);
   
   // Intercetta la richiesta di manifest.json per leggere i parametri della query
   if (parsedUrl.pathname === '/manifest.json') {
+    // Estrai il parametro showBothLinks
     const showBothLinks = parsedUrl.query.showBothLinks === 'true';
-    // Passa il parametro all'interfaccia dell'addon
-    addonInterface.config = { showBothLinks: String(showBothLinks) };
     
-    // Continua con la gestione normale
-    return addonInterface.serveHTTP(req, res);
+    // Imposta la configurazione globale
+    setShowBothLinks(showBothLinks);
+    
+    // Continua con la richiesta normale
+    return serveHTTP(addonInterface, { server })(req, res);
   }
   
   // Gestisci la richiesta per la landing page
@@ -65,12 +68,15 @@ http.createServer((req, res) => {
     }
   }
   
-  // Per tutte le altre richieste, usa l'interfaccia standard dell'addon
-  return addonInterface.serveHTTP(req, res);
-}).listen(port);
+  // Per tutte le altre richieste, usa il serveHTTP standard
+  return serveHTTP(addonInterface, { server })(req, res);
+});
 
-console.log(`Addon active on port ${port}`);
-console.log(`Manifest available at http://localhost:${port}/manifest.json`);
+// Avvia il server sulla porta specificata
+server.listen(port, () => {
+  console.log(`Addon active on port ${port}`);
+  console.log(`Manifest available at http://localhost:${port}/manifest.json`);
+});
 
 // when you've deployed your addon, un-comment this line
 // publishToCentral("https://my-addon.awesome/manifest.json")
