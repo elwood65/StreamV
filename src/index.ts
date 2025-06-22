@@ -75,7 +75,15 @@ const server = http.createServer((req, res) => {
   if (parsedUrl.pathname?.startsWith('/stream/')) {
     // Estrai i parametri dalla URL
     const typePath = parsedUrl.pathname.split('/')[2]; // Ottieni il secondo segmento
-    const id = parsedUrl.pathname.split('/')[3]; // Ottieni il terzo segmento
+    let id = parsedUrl.pathname.split('/')[3]; // Ottieni il terzo segmento
+    
+    // Rimuovi l'estensione .json se presente
+    if (id && id.endsWith('.json')) {
+      id = id.replace('.json', '');
+    }
+    
+    // Debug
+    console.log(`Extracting stream for ${id} (${typePath})`);
     
     // Convert string to proper ContentType
     const type = typePath === 'series' ? 'series' : 'movie';
