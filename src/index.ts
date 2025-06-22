@@ -23,7 +23,7 @@ console.log("MFP_PSW from env:", process.env.MFP_PSW);
 const addonInterface = addon.getInterface();
 
 // Funzione per estrarre l'URL originale dal proxy URL
-function extractOriginalUrl(proxyUrl) {
+function extractOriginalUrl(proxyUrl: string): string {
   try {
     // Controlla se è un URL proxy
     if (proxyUrl.includes('/proxy/hls/manifest.m3u8')) {
