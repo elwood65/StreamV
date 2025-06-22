@@ -89,7 +89,7 @@ const server = http.createServer((req, res) => {
       if (ext === '.css') contentType = 'text/css';
       if (ext === '.js') contentType = 'text/javascript';
       
-      // CORREZIONE: Content-Type corretto per i file statici
+      // Content-Type corretto per i file statici
       res.writeHead(200, { 'Content-Type': contentType });
       return res.end(content);
     }
@@ -144,12 +144,16 @@ const server = http.createServer((req, res) => {
             
             console.log(`Processing stream ${st.name || "unnamed"} with URL ${st.streamUrl}`);
             
+            // Usa il titolo originale senza aggiunte
+            const contentTitle = st.name ?? "Stream";
+            
             // Caso 1: Mostra entrambi i link (originale + proxy/mancante)
             if (showBothLinksGlobal) {
-              // Aggiungi lo stream originale
+              // Aggiungi lo stream originale - titolo puro senza (Proxy)
               console.log("Adding original stream");
               streams.push({
-                title: st.name ?? "Original Source",
+                title: "StreamViX", // Solo il nome dell'addon 
+                name: contentTitle, // Il titolo originale
                 url: st.streamUrl,
                 behaviorHints: { notWebReady: true }
               });
@@ -164,7 +168,8 @@ const server = http.createServer((req, res) => {
                 });
                 
                 streams.push({
-                  title: `${st.name ?? "Original Source"} (Proxy)`,
+                  title: "StreamViX (Proxy)", // Nome addon con (Proxy)
+                  name: contentTitle, // Il titolo originale
                   url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
                   behaviorHints: { notWebReady: false }
                 });
@@ -172,7 +177,8 @@ const server = http.createServer((req, res) => {
                 // Se MFP non è configurato, aggiungi un link "Proxy mancante"
                 console.log("Adding 'Proxy mancante' stream");
                 streams.push({
-                  title: `${st.name ?? "Original Source"} (Proxy mancante)`,
+                  title: "StreamViX (Proxy mancante)", // Nome addon con (Proxy mancante)
+                  name: contentTitle, // Il titolo originale
                   url: st.streamUrl, // Usa lo stesso URL originale
                   behaviorHints: { notWebReady: true }
                 });
@@ -189,7 +195,8 @@ const server = http.createServer((req, res) => {
                 });
                 
                 streams.push({
-                  title: `${st.name ?? "Original Source"} (Proxy)`,
+                  title: "StreamViX (Proxy)", // Nome addon con (Proxy)
+                  name: contentTitle, // Il titolo originale
                   url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
                   behaviorHints: { notWebReady: false }
                 });
@@ -197,7 +204,8 @@ const server = http.createServer((req, res) => {
                 // Se MFP non è configurato, mostra solo l'originale
                 console.log("Adding only original stream (no MFP)");
                 streams.push({
-                  title: st.name ?? "Original Source",
+                  title: "StreamViX", // Solo il nome dell'addon
+                  name: contentTitle, // Il titolo originale
                   url: st.streamUrl,
                   behaviorHints: { notWebReady: true }
                 });
@@ -208,7 +216,7 @@ const server = http.createServer((req, res) => {
           // Debug
           console.log(`Generated ${streams.length} streams`);
           for (const s of streams) {
-            console.log(`Stream: ${s.title}, URL: ${s.url}`);
+            console.log(`Stream: ${s.title}, Name: ${s.name}, URL: ${s.url}`);
           }
           
           res.writeHead(200, { 'Content-Type': 'application/json' });
