@@ -85,12 +85,11 @@ const server = http.createServer((req, res) => {
     // Debug
     console.log(`Extracting stream for ${id} (${typePath})`);
     
-    // Convert string to proper ContentType
+    // Convert string to proper ContentType - supporta sia movie che series
     const type = typePath === 'series' ? 'series' : 'movie';
     
     if (type && id) {
-      // Invece di usare addonInterface.methods (che non esiste), 
-      // usiamo direttamente la funzione getStreamContent
+      // Usa la funzione getStreamContent direttamente
       getStreamContent(id, type as any)
         .then((streamResults) => {
           if (!streamResults) {
@@ -108,57 +107,52 @@ const server = http.createServer((req, res) => {
             
             const result = [];
             
-            // Aggiungi sempre lo stream originale
+            // CORREZIONE 1: Aggiungi stream originale senza proxy
             result.push({
-              title: `▶ StreamViX ◀ ${st.name ?? "Original Source"}`,  // Modifica qui 
-              url: st.streamUrl,
+              title: st.name ?? "Original Source",  // Solo il nome originale
+              url: st.streamUrl,  // URL originale senza proxy
               behaviorHints: { notWebReady: true }
             });
             
-            // Se showBothLinks è true, aggiungi un secondo stream
-            if (showBothLinksGlobal) {
-              // Se MFP è configurato, usa quello
-              if (mfpUrl && mfpPsw) {
-                const params = new URLSearchParams({
-                  api_password: mfpPsw,
-                  d: st.streamUrl
-                });
-                
-                result.push({
-                  title: `▶ StreamViX Proxy ◀ ${st.name ?? "Original Source"}`,  // Modifica qui
-                  url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                  behaviorHints: { notWebReady: false }
-                });
-              } 
-              // Altrimenti aggiungi un link fittizio
-              else {
-                result.push({
-                  title: `▶ StreamViX Missing Proxy ◀ ${st.name ?? "Original Source"}`,  // Modifica qui
-                  url: st.streamUrl,
-                  behaviorHints: { notWebReady: true }
-                });
-              }
-            } 
-            // Se MFP è configurato e showBothLinks è false, sostituisci lo stream originale con quello proxy
-            else if (mfpUrl && mfpPsw) {
-              // Rimuovi lo stream originale
-              result.pop();
-              
-              // Create params here too
+            // Se showBothLinks è true, aggiungi un secondo stream con proxy
+            if (showBothLinksGlobal && mfpUrl && mfpPsw) {
               const params = new URLSearchParams({
                 api_password: mfpPsw,
                 d: st.streamUrl
               });
               
+              // CORREZIONE 2: Aggiungi stream con proxy, mantenendo (Proxy) nel titolo
               result.push({
-                title: `▶ StreamViX Proxy ◀ ${st.name ?? "Original Source"}`,  // Modifica qui
+                title: `${st.name ?? "Original Source"} (Proxy)`, 
+                url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                behaviorHints: { notWebReady: false }
+              });
+            } 
+            // Se showBothLinks è false ma MFP è configurato, sostituisci lo stream originale con quello proxy
+            else if (!showBothLinksGlobal && mfpUrl && mfpPsw) {
+              // Rimuovi lo stream originale
+              result.pop();
+              
+              const params = new URLSearchParams({
+                api_password: mfpPsw,
+                d: st.streamUrl
+              });
+              
+              // CORREZIONE 3: Usa solo lo stream proxy, mantenendo (Proxy) nel titolo
+              result.push({
+                title: `${st.name ?? "Original Source"} (Proxy)`,
                 url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
                 behaviorHints: { notWebReady: false }
               });
             }
+            // Non c'è un caso "else if (showBothLinksGlobal && (!mfpUrl || !mfpPsw))" 
+            // perché se mancano le config MFP, mostriamo solo l'originale
             
             return result;
           });
+          
+          // Debug
+          console.log(`Generated ${streams.length} streams`);
           
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ streams }));
