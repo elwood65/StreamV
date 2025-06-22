@@ -50,11 +50,9 @@ function loadCustomConfig(): Manifest {
 const manifest = loadCustomConfig();
 const builder = new addonBuilder(manifest);
 
-// Verificare se l'URL contiene il parametro showBothLinks
+// Global flag for showing both links
 let showBothLinksGlobal = false;
 
-// Intercettare l'URL di installazione per estrarre il parametro
-// Questo è un workaround poiché non possiamo accedere direttamente ai parametri della query
 builder.defineStreamHandler(
   async ({
     id,
@@ -131,13 +129,10 @@ builder.defineStreamHandler(
   }
 );
 
-// Questo hook viene eseguito all'avvio del server
-builder.defineConfigHandler((config) => {
-  if (config && config.showBothLinks) {
-    showBothLinksGlobal = config.showBothLinks === 'true';
-  }
-  return Promise.resolve({ showBothLinks: showBothLinksGlobal });
-});
+// Export a function to set the showBothLinks flag
+export function setShowBothLinks(value: boolean): void {
+  showBothLinksGlobal = value;
+}
 
 export const addon = builder;
 export default builder.getInterface();
