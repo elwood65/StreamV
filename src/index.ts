@@ -22,17 +22,35 @@ console.log("MFP_PSW from env:", process.env.MFP_PSW);
 // Ottieni l'interfaccia addon
 const addonInterface = addon.getInterface();
 
+// Funzione per estrarre l'URL originale dal proxy URL
+function extractOriginalUrl(proxyUrl) {
+  try {
+    // Controlla se è un URL proxy
+    if (proxyUrl.includes('/proxy/hls/manifest.m3u8')) {
+      // Estrai il parametro 'd' che contiene l'URL originale
+      const urlObj = new URL(proxyUrl);
+      const originalUrl = urlObj.searchParams.get('d');
+      if (originalUrl) {
+        console.log("Extracted original URL:", originalUrl);
+        return originalUrl;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to extract original URL:", e);
+  }
+  
+  // Se non riusciamo a estrarre l'URL originale, restituisci quello proxy
+  return proxyUrl;
+}
+
 // Crea un server HTTP personalizzato
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url || '', true);
-  
-  console.log(`Received request: ${req.url}`); // Debug richiesta
   
   // Intercetta la richiesta di manifest.json per leggere i parametri della query
   if (parsedUrl.pathname === '/manifest.json') {
     // Estrai il parametro showBothLinks
     const showBothLinks = parsedUrl.query.showBothLinks === 'true';
-    console.log(`Manifest request with showBothLinks=${showBothLinks}`);
     
     // Imposta la configurazione globale
     setShowBothLinks(showBothLinks);
@@ -107,10 +125,6 @@ const server = http.createServer((req, res) => {
           }
           
           // Costruisci lo stesso oggetto di risposta che abbiamo in addon.ts
-          const mfpUrl = process.env.MFP_URL;
-          const mfpPsw = process.env.MFP_PSW;
-          console.log(`MFP configured: ${!!mfpUrl && !!mfpPsw}`);
-          
           const streams = [];
           
           // Processa ogni risultato dello streaming
@@ -123,54 +137,38 @@ const server = http.createServer((req, res) => {
             
             console.log(`Processing stream ${st.name || "unnamed"} with URL ${st.streamUrl}`);
             
-            // CORREZIONE: Usa solo il comportamento definito nell'addon.ts
+            // CORREZIONE: Estrai l'URL originale dal proxyURL
+            const originalUrl = extractOriginalUrl(st.streamUrl);
+            const proxyUrl = st.streamUrl; // L'URL proxy è quello che abbiamo già
 
+            console.log(`Original URL: ${originalUrl}`);
+            console.log(`Proxy URL: ${proxyUrl}`);
+            
             // Caso 1: Mostra entrambi i link (originale + proxy)
             if (showBothLinksGlobal) {
               console.log("Adding original stream");
-              // Aggiungi sempre lo stream originale
+              // Aggiungi lo stream originale
               streams.push({
                 title: st.name ?? "Original Source",
-                url: st.streamUrl,
+                url: originalUrl,
                 behaviorHints: { notWebReady: true }
               });
               
-              // Poi aggiungi lo stream proxy se configurato
-              if (mfpUrl && mfpPsw) {
-                console.log("Adding proxy stream");
-                const params = new URLSearchParams({
-                  api_password: mfpPsw,
-                  d: st.streamUrl
-                });
-                
-                streams.push({
-                  title: `${st.name ?? "Original Source"} (Proxy)`,
-                  url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                  behaviorHints: { notWebReady: false }
-                });
-              }
+              // Aggiungi lo stream proxy
+              console.log("Adding proxy stream");
+              streams.push({
+                title: `${st.name ?? "Original Source"} (Proxy)`,
+                url: proxyUrl,
+                behaviorHints: { notWebReady: false }
+              });
             } else {
-              // Caso 2: Mostra un solo link (proxy se disponibile, altrimenti originale)
-              if (mfpUrl && mfpPsw) {
-                console.log("Adding only proxy stream");
-                const params = new URLSearchParams({
-                  api_password: mfpPsw,
-                  d: st.streamUrl
-                });
-                
-                streams.push({
-                  title: `${st.name ?? "Original Source"} (Proxy)`,
-                  url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                  behaviorHints: { notWebReady: false }
-                });
-              } else {
-                console.log("Adding only original stream");
-                streams.push({
-                  title: st.name ?? "Original Source",
-                  url: st.streamUrl,
-                  behaviorHints: { notWebReady: true }
-                });
-              }
+              // Caso 2: Mostra un solo link (proxy)
+              console.log("Adding only proxy stream");
+              streams.push({
+                title: `${st.name ?? "Original Source"} (Proxy)`,
+                url: proxyUrl,
+                behaviorHints: { notWebReady: false }
+              });
             }
           }
           
