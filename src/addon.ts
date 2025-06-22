@@ -67,10 +67,12 @@ builder.defineStreamHandler(
         
         // Aggiungi questo debug
         console.log(`Adding stream with title: "${st.name}"`);
+
+        const streamName = st.source === 'proxy' ? 'StreamViX (Proxy)' : 'StreamViX';
         
         streams.push({
           title: st.name, // Assicurati che questo campo sia corretto
-          name: st.name,  // Prova ad aggiungere anche questo campo
+          name: streamName,
           url: st.streamUrl,
           behaviorHints: {
             notWebReady: true,
