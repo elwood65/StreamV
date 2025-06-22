@@ -50,47 +50,48 @@ function loadCustomConfig(): Manifest {
 const manifest = loadCustomConfig();
 const builder = new addonBuilder(manifest);
 
+// Verificare se l'URL contiene il parametro showBothLinks
+let showBothLinksGlobal = false;
+
+// Intercettare l'URL di installazione per estrarre il parametro
+// Questo è un workaround poiché non possiamo accedere direttamente ai parametri della query
 builder.defineStreamHandler(
   async ({
     id,
-    type,
-    extra
-  }): Promise<{
-    streams: Stream[];
-  }> => {
+    type
+  }) => {
     try {
-      const res = await getStreamContent(id, type);
-      
+      const res: VixCloudStreamInfo[] | null = await getStreamContent(id, type);
+
       if (!res) {
         return { streams: [] };
       }
 
       let streams: Stream[] = [];
-      const showBothLinks = extra && extra.showBothLinks === "true";
       const mfpUrl = process.env.MFP_URL;
       const mfpPsw = process.env.MFP_PSW;
       
       for (const st of res) {
-        if (st.stream == null) continue;
+        if (st.streamUrl == null) continue;
         
         // Aggiungi sempre lo stream originale
         streams.push({
-          title: st.name ? `${st.name}` : "Original Source",
-          url: st.stream,
+          title: st.name ?? "Original Source",
+          url: st.streamUrl,
           behaviorHints: { notWebReady: true },
         } as Stream);
         
         // Se showBothLinks è true, aggiungi un secondo stream
-        if (showBothLinks) {
+        if (showBothLinksGlobal) {
           // Se MFP è configurato, usa quello
           if (mfpUrl && mfpPsw) {
             const params = new URLSearchParams({
               api_password: mfpPsw,
-              d: st.stream
+              d: st.streamUrl
             });
             
             streams.push({
-              title: st.name ? `${st.name} (Proxy)` : "Proxy Source",
+              title: `${st.name ?? "Original Source"} (Proxy)`,
               url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
               behaviorHints: { notWebReady: false },
             } as Stream);
@@ -98,8 +99,8 @@ builder.defineStreamHandler(
           // Altrimenti aggiungi un link fittizio
           else {
             streams.push({
-              title: st.name ? `${st.name} (Missing Proxy)` : "Missing Proxy",
-              url: st.stream,
+              title: `${st.name ?? "Original Source"} (Missing Proxy)`,
+              url: st.streamUrl,
               behaviorHints: { notWebReady: true },
             } as Stream);
           }
@@ -108,14 +109,14 @@ builder.defineStreamHandler(
         else if (mfpUrl && mfpPsw) {
           const params = new URLSearchParams({
             api_password: mfpPsw,
-            d: st.stream
+            d: st.streamUrl
           });
           
           // Rimuovi lo stream originale
           streams.pop();
           
           streams.push({
-            title: st.name ? `${st.name} (Proxy)` : "Proxy Source",
+            title: `${st.name ?? "Original Source"} (Proxy)`,
             url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
             behaviorHints: { notWebReady: false },
           } as Stream);
@@ -129,6 +130,14 @@ builder.defineStreamHandler(
     }
   }
 );
+
+// Questo hook viene eseguito all'avvio del server
+builder.defineConfigHandler((config) => {
+  if (config && config.showBothLinks) {
+    showBothLinksGlobal = config.showBothLinks === 'true';
+  }
+  return Promise.resolve({ showBothLinks: showBothLinksGlobal });
+});
 
 export const addon = builder;
 export default builder.getInterface();
