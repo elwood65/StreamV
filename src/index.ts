@@ -11,7 +11,8 @@ import * as http from 'http';
 import * as url from 'url';
 
 // Configura porta e indirizzo
-const port = process.env.PORT || 7860;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 7860;
+const staticPath = path.join(__dirname, '..', 'src', 'public');
 
 // Stampa le variabili d'ambiente MFP (solo per debugging)
 console.log("MFP_URL from env:", process.env.MFP_URL);
@@ -32,14 +33,15 @@ const server = http.createServer((req, res) => {
     // Imposta la configurazione globale
     setShowBothLinks(showBothLinks);
     
-    // Continua con la richiesta normale
-    return serveHTTP(addonInterface, { server })(req, res);
+    // Continua con la richiesta normale - serve il manifest.json
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(addonInterface.manifest));
   }
   
   // Gestisci la richiesta per la landing page
   if (parsedUrl.pathname === '/' || parsedUrl.pathname === '') {
     try {
-      const landingPath = path.join(__dirname, '..', 'src', 'public', 'landing.html');
+      const landingPath = path.join(staticPath, 'landing.html');
       if (fs.existsSync(landingPath)) {
         const content = fs.readFileSync(landingPath, 'utf8');
         res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -68,8 +70,30 @@ const server = http.createServer((req, res) => {
     }
   }
   
-  // Per tutte le altre richieste, usa il serveHTTP standard
-  return serveHTTP(addonInterface, { server })(req, res);
+  // Per le richieste di stream, gestisci manualmente
+  if (parsedUrl.pathname?.startsWith('/stream/')) {
+    // Estrai i parametri dalla URL
+    const type = parsedUrl.pathname.split('/')[2]; // Ottieni il secondo segmento
+    const id = parsedUrl.pathname.split('/')[3]; // Ottieni il terzo segmento
+    
+    if (type && id) {
+      addonInterface.methods.stream({ type, id })
+        .then(streamResponse => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify(streamResponse));
+        })
+        .catch(error => {
+          console.error('Stream handler error:', error);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'Stream handler failed' }));
+        });
+      return;
+    }
+  }
+  
+  // Per tutte le altre richieste, mostra un 404
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not Found');
 });
 
 // Avvia il server sulla porta specificata
