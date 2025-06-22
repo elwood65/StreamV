@@ -110,7 +110,7 @@ const server = http.createServer((req, res) => {
             
             // Aggiungi sempre lo stream originale
             result.push({
-              title: st.name ?? "Original Source",
+              title: `▶ StreamViX ◀ ${st.name ?? "Original Source"}`,  // Modifica qui 
               url: st.streamUrl,
               behaviorHints: { notWebReady: true }
             });
@@ -125,7 +125,7 @@ const server = http.createServer((req, res) => {
                 });
                 
                 result.push({
-                  title: `${st.name ?? "Original Source"} (Proxy)`,
+                  title: `▶ StreamViX Proxy ◀ ${st.name ?? "Original Source"}`,  // Modifica qui
                   url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
                   behaviorHints: { notWebReady: false }
                 });
@@ -133,7 +133,7 @@ const server = http.createServer((req, res) => {
               // Altrimenti aggiungi un link fittizio
               else {
                 result.push({
-                  title: `${st.name ?? "Original Source"} (Missing Proxy)`,
+                  title: `▶ StreamViX Missing Proxy ◀ ${st.name ?? "Original Source"}`,  // Modifica qui
                   url: st.streamUrl,
                   behaviorHints: { notWebReady: true }
                 });
@@ -151,7 +151,7 @@ const server = http.createServer((req, res) => {
               });
               
               result.push({
-                title: `${st.name ?? "Original Source"} (Proxy)`,
+                title: `▶ StreamViX Proxy ◀ ${st.name ?? "Original Source"}`,  // Modifica qui
                 url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
                 behaviorHints: { notWebReady: false }
               });
