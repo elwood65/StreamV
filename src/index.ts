@@ -74,13 +74,16 @@ const server = http.createServer((req, res) => {
   // Per le richieste di stream, gestisci manualmente
   if (parsedUrl.pathname?.startsWith('/stream/')) {
     // Estrai i parametri dalla URL
-    const type = parsedUrl.pathname.split('/')[2]; // Ottieni il secondo segmento
+    const typePath = parsedUrl.pathname.split('/')[2]; // Ottieni il secondo segmento
     const id = parsedUrl.pathname.split('/')[3]; // Ottieni il terzo segmento
+    
+    // Convert string to proper ContentType
+    const type = typePath === 'series' ? 'series' : 'movie';
     
     if (type && id) {
       // Invece di usare addonInterface.methods (che non esiste), 
       // usiamo direttamente la funzione getStreamContent
-      getStreamContent(id, type)
+      getStreamContent(id, type as any)
         .then((streamResults) => {
           if (!streamResults) {
             res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -132,6 +135,12 @@ const server = http.createServer((req, res) => {
             else if (mfpUrl && mfpPsw) {
               // Rimuovi lo stream originale
               result.pop();
+              
+              // Create params here too
+              const params = new URLSearchParams({
+                api_password: mfpPsw,
+                d: st.streamUrl
+              });
               
               result.push({
                 title: `${st.name ?? "Original Source"} (Proxy)`,
