@@ -351,7 +351,10 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     // Now TypeScript knows targetUrl is not null for the rest of the function
     const siteOrigin = new URL(targetUrl).origin;
     let pageHtml = "";
-    let finalReferer: string = targetUrl; // Changed from const to let
+    
+    // The problem is here - targetUrl was already checked, but TypeScript still sees it as possibly null
+    // Use a type assertion to tell TypeScript that targetUrl is definitely a string at this point
+    let finalReferer = targetUrl as string;
 
     try {
       if (targetUrl.includes("/iframe")) { 
