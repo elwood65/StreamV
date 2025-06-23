@@ -240,7 +240,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       return null;
     }
 
-    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(targetUrl)}`;
+    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(targetUrl || '')}`;
     console.log(`Proxy mode active. Generated proxy URL for ${id}: ${proxyStreamUrl}`);
 
     // Nuova funzione asincrona per ottenere l'URL m3u8 finale
@@ -342,14 +342,16 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
 
   // Funzione per ottenere il direct stream
   async function getDirectStream(): Promise<VixCloudStreamInfo | null> {
-    // Ensure targetUrl is not null before using it
+    // Early return if targetUrl is null
     if (!targetUrl) {
+      console.error("Target URL is null");
       return null;
     }
 
+    // Now TypeScript knows targetUrl is not null for the rest of the function
     const siteOrigin = new URL(targetUrl).origin;
     let pageHtml = "";
-    let finalReferer: string = targetUrl; // Initialize as string, not string | null
+    const finalReferer = targetUrl; // Now we can assign it directly as we know it's not null
 
     try {
       if (targetUrl.includes("/iframe")) { 
