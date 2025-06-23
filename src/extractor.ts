@@ -488,11 +488,8 @@ function extractOriginalUrl(proxyUrl: string): string {
 
 // La tua funzione di scraping (sostituisci con la tua vera logica)
 async function fetchStreamsFromSource(id: string, type: 'movie' | 'series'): Promise<{ name: string, streamUrl: string }[]> {
-    // !!! METTI QUI LA TUA LOGICA DI SCRAPING ESISTENTE !!!
-    // Deve restituire un array di oggetti, come faceva prima. Esempio:
     console.log(`Inizio scraping per ${type} ${id}...`);
-    // const results = await ...
-    // return results;
+    // Esempio: const results = await ...
     return []; // Ritorna un array vuoto per ora
 }
 
