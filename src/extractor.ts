@@ -481,4 +481,22 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     const proxyStream = await getProxyStream();
     const directStream = await getDirectStream();
     
-    if
+    if (proxyStream) results.push(proxyStream);
+    if (directStream) results.push(directStream);
+    
+    return results.length > 0 ? results : null;
+  } else {
+    // Logica originale: proxy se configurato, altrimenti direct
+    if (MFP_URL && MFP_PSW) {
+      // --- Proxy Mode ---
+      const proxyStream = await getProxyStream();
+      return proxyStream ? [proxyStream] : null;
+    } else {
+      // --- Direct Extraction Mode (if proxy not configured) ---
+      const directStream = await getDirectStream();
+      return directStream ? [directStream] : null;
+    }
+  }
+}
+
+export { getStreamContent };
