@@ -3,7 +3,6 @@
 import dotenv from 'dotenv';
 dotenv.config(); 
 
-import { serveHTTP } from "stremio-addon-sdk";
 import { addon, setShowBothLinks } from "./addon";
 import { getStreamContent } from "./extractor";
 import * as fs from 'fs';
@@ -34,76 +33,36 @@ interface SeriesData {
   episode?: number;
 }
 
-// Funzione per estrarre l'URL originale dal proxy URL
-function extractOriginalUrl(proxyUrl: string): string {
-  try {
-    // Controlla se è un URL proxy
-    if (proxyUrl.includes('/proxy/hls/manifest.m3u8')) {
-      // Estrai il parametro 'd' che contiene l'URL originale
-      const urlObj = new URL(proxyUrl);
-      const originalUrl = urlObj.searchParams.get('d');
-      if (originalUrl) {
-        console.log("Extracted original URL:", originalUrl);
-        return originalUrl;
-      }
-    }
-  } catch (e) {
-    console.error("Failed to extract original URL:", e);
-  }
-  
-  // Se non riusciamo a estrarre l'URL originale, restituisci quello proxy
-  return proxyUrl;
-}
-
 // Nuova funzione per convertire IMDb ID in TMDB ID per serie TV
-async function convertImdbToTmdb(imdbId: string, type: string): Promise<SeriesData | null> {
+async function convertImdbToTmdb(imdbId: string): Promise<SeriesData | null> {
   try {
     // Per le serie, estrai l'ID base, la stagione e l'episodio
-    let baseImdbId = imdbId;
-    let season: string | null = null;
-    let episode: string | null = null;
-    
-    if (type === 'series' && imdbId.includes(':')) {
-      const parts = imdbId.split(':');
-      baseImdbId = parts[0]; // ID IMDb base
-      season = parts[1];     // Numero stagione  
-      episode = parts[2];    // Numero episodio
-      console.log(`Parsed series ID: Base=${baseImdbId}, Season=${season}, Episode=${episode}`);
-    }
+    const parts = imdbId.split(':');
+    const baseImdbId = parts[0]; // ID IMDb base
+    const season = parts[1];     // Numero stagione  
+    const episode = parts[2];    // Numero episodio
+    console.log(`Parsed series ID: Base=${baseImdbId}, Season=${season}, Episode=${episode}`);
     
     // Cerca l'ID TMDB usando l'ID IMDb base
-    const url = `https://api.themoviedb.org/3/find/${baseImdbId}?api_key=${TMDB_API_KEY}&external_source=imdb_id`;
-    console.log(`Searching TMDB with URL: ${url}`);
+    const findUrl = `https://api.themoviedb.org/3/find/${baseImdbId}?api_key=${TMDB_API_KEY}&external_source=imdb_id`;
+    console.log(`Searching TMDB with URL: ${findUrl}`);
     
-    // Usa fetch invece di axios
-    const response = await fetch(url);
+    const response = await fetch(findUrl);
     const data = await response.json();
     console.log("TMDB API Response:", data);
     
-    if (type === 'movie' && data.movie_results && data.movie_results.length > 0) {
-      // È un film
-      return {
-        tmdbId: data.movie_results[0].id,
-        type: 'movie',
-        title: data.movie_results[0].title
-      };
-    } else if (data.tv_results && data.tv_results.length > 0) {
-      // È una serie TV
+    if (data.tv_results && data.tv_results.length > 0) {
       const seriesData: SeriesData = {
         tmdbId: data.tv_results[0].id,
         type: 'tv',
-        title: data.tv_results[0].name
+        title: data.tv_results[0].name,
+        season: parseInt(season),
+        episode: parseInt(episode)
       };
-      
-      // Se abbiamo informazioni su stagione ed episodio, aggiungiamole
-      if (season && episode) {
-        seriesData.season = parseInt(season);
-        seriesData.episode = parseInt(episode);
-      }
-      
       return seriesData;
     }
     
+    console.error("No TV results found for IMDb ID:", baseImdbId);
     return null;
   } catch (error) {
     console.error("Error converting IMDb to TMDB:", error);
@@ -112,26 +71,22 @@ async function convertImdbToTmdb(imdbId: string, type: string): Promise<SeriesDa
 }
 
 // Crea un server HTTP personalizzato
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url || '', true);
+  const pathname = parsedUrl.pathname || '';
   
   console.log(`Received request: ${req.url}`);
   
-  // Intercetta la richiesta di manifest.json per leggere i parametri della query
-  if (parsedUrl.pathname === '/manifest.json') {
-    // Estrai il parametro showBothLinks
+  // Gestione manifest
+  if (pathname === '/manifest.json') {
     const showBothLinks = parsedUrl.query.showBothLinks === 'true';
-    
-    // Imposta la configurazione globale
     setShowBothLinks(showBothLinks);
-    
-    // Continua con la richiesta normale - serve il manifest.json
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(addonInterface.manifest));
   }
   
-  // Gestisci la richiesta per la landing page
-  if (parsedUrl.pathname === '/' || parsedUrl.pathname === '') {
+  // Gestione landing page
+  if (pathname === '/' || pathname === '') {
     try {
       const landingPath = path.join(staticPath, 'landing.html');
       if (fs.existsSync(landingPath)) {
@@ -144,289 +99,127 @@ const server = http.createServer((req, res) => {
     }
   }
   
-  // Gestisci richieste di file statici
-  if (parsedUrl.pathname?.startsWith('/public/')) {
-    const filePath = path.join(__dirname, '..', 'src', parsedUrl.pathname);
+  // Gestione file statici
+  if (pathname.startsWith('/public/')) {
+    const filePath = path.join(__dirname, '..', 'src', pathname);
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath);
       const ext = path.extname(filePath).toLowerCase();
-      
       let contentType = 'text/plain';
       if (ext === '.png') contentType = 'image/png';
       if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
       if (ext === '.css') contentType = 'text/css';
       if (ext === '.js') contentType = 'text/javascript';
-      
-      // Content-Type corretto per i file statici
       res.writeHead(200, { 'Content-Type': contentType });
       return res.end(content);
     }
   }
   
-  // Per le richieste di stream, gestisci manualmente
-  if (parsedUrl.pathname?.startsWith('/stream/')) {
-    // Estrai i parametri dalla URL
-    const typePath = parsedUrl.pathname.split('/')[2]; // Ottieni il secondo segmento
-    let id = parsedUrl.pathname.split('/')[3]; // Ottieni il terzo segmento
-    
-    // Rimuovi l'estensione .json se presente
-    if (id && id.endsWith('.json')) {
-      id = id.replace('.json', '');
+  // Gestione richieste di stream
+  if (pathname.startsWith('/stream/')) {
+    const parts = pathname.split('/');
+    const type = parts[2] as 'movie' | 'series';
+    let id = parts[3]?.replace('.json', '');
+
+    if (!type || !id) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        return res.end('Not Found');
     }
-    
-    // Debug
-    console.log(`Extracting stream for ${id} (${typePath})`);
-    
-    // Convert string to proper ContentType - supporta sia movie che series
-    const type = typePath === 'series' ? 'series' : 'movie';
-    
-    if (type && id) {
-      // Ottieni il parametro showBothLinks dalla query della richiesta corrente
-      const showBothLinksGlobal = parsedUrl.query.showBothLinks === 'true';
-      console.log(`Stream request with showBothLinks=${showBothLinksGlobal}`);
-      
-      // NUOVA IMPLEMENTAZIONE: Controlla se è una serie e gestisci l'ID IMDb
-      if (type === 'series' && id.includes(':')) {
-        convertImdbToTmdb(id, type)
-          .then(tmdbData => {
-            if (!tmdbData) {
-              console.log("Could not convert IMDb to TMDB");
-              res.writeHead(404, { 'Content-Type': 'application/json' });
-              return res.end(JSON.stringify({ streams: [] }));
+
+    // **CORREZIONE 1: Decodifica l'ID per gestire i ":" nelle serie TV**
+    id = decodeURIComponent(id);
+    console.log(`Extracting stream for id: ${id}, type: ${type}`);
+
+    const showBothLinksGlobal = parsedUrl.query.showBothLinks === 'true';
+    let streamResults: { name: string, streamUrl: string }[] | null = [];
+
+    try {
+        if (type === 'series' && id.includes(':')) {
+            const tmdbData = await convertImdbToTmdb(id);
+            if (tmdbData) {
+                const streamUrl = `https://vixsrc.to/tv/${tmdbData.tmdbId}-${tmdbData.season}-${tmdbData.episode}`;
+                streamResults = [{
+                    name: `${tmdbData.title} S${tmdbData.season}E${tmdbData.episode}`,
+                    streamUrl: streamUrl
+                }];
             }
-            
-            console.log("Successfully converted to TMDB:", tmdbData);
-            
-            // Costruisci un URL personalizzato per la serie TV specifica
-            const streamUrl = `https://vixsrc.to/tv/${tmdbData.tmdbId}-${tmdbData.season}-${tmdbData.episode}/`;
-            
-            // Crea un risultato di streaming fittizio
-            const streamResults = [{
-              name: `${tmdbData.title} S${tmdbData.season}E${tmdbData.episode}`,
-              streamUrl: streamUrl
-            }];
-            
-            // Ora processa questo risultato come faresti normalmente
-            // Ottieni configurazione MFP
-            const mfpUrl = process.env.MFP_URL;
-            const mfpPsw = process.env.MFP_PSW;
-            const hasMfp = !!mfpUrl && !!mfpPsw;
-            console.log(`MFP Configuration available: ${hasMfp}`);
-            
-            const streams = [];
-            
-            // Processa ogni risultato dello streaming
-            for (const st of streamResults) {
-              // Ignora i risultati senza URL
-              if (!st.streamUrl) {
-                console.log("Skipping result without URL");
-                continue;
-              }
-              
-              console.log(`Processing stream ${st.name || "unnamed"} with URL ${st.streamUrl}`);
-              
-              // Usa il titolo originale senza aggiunte
-              const contentTitle = st.name ?? "Stream";
-              
-              // Aggiungi log per diagnostica
-              console.log(`ShowBothLinks value: ${showBothLinksGlobal}, hasMFP: ${hasMfp}`);
-              
-              // Caso 1: Mostra entrambi i link (originale + proxy/mancante)
-              if (showBothLinksGlobal) {
-                // Aggiungi lo stream originale - SEMPRE URL ORIGINALE
-                console.log("Adding original stream (direct URL)");
+        } else {
+            streamResults = await getStreamContent(id, type);
+        }
+
+        if (!streamResults || streamResults.length === 0) {
+            console.log("No stream results found for:", id);
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ streams: [] }));
+        }
+
+        const mfpUrl = process.env.MFP_URL;
+        const mfpPsw = process.env.MFP_PSW;
+        const hasMfp = !!mfpUrl && !!mfpPsw;
+        const streams = [];
+
+        // **CORREZIONE 2 & 3: Logica unificata e corretta per generare i link**
+        for (const st of streamResults) {
+            if (!st.streamUrl) continue;
+
+            const contentTitle = st.name ?? "Stream";
+
+            if (showBothLinksGlobal) {
+                // Mostra entrambi: originale + proxy
+                // Link Originale
                 streams.push({
-                  title: "StreamViX", // Solo il nome dell'addon 
-                  name: contentTitle, // Il titolo originale
-                  url: st.streamUrl, // URL originale
-                  behaviorHints: { notWebReady: true }
+                    name: "StreamViX",
+                    title: contentTitle,
+                    url: st.streamUrl,
+                    behaviorHints: { notWebReady: true }
                 });
-                
-                // Se MFP è configurato, aggiungi lo stream proxy
+
+                // Link Proxy (o placeholder se non configurato)
                 if (hasMfp) {
-                  console.log("Adding MFP proxy stream");
-                  
-                  const params = new URLSearchParams({
-                    api_password: mfpPsw!,
-                    d: st.streamUrl // Passa l'URL originale
-                  });
-                  
-                  streams.push({
-                    title: "StreamViX (Proxy)", // Nome addon con (Proxy)
-                    name: contentTitle, // Il titolo originale
-                    url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                    behaviorHints: { notWebReady: false }
-                  });
+                    const params = new URLSearchParams({ api_password: mfpPsw!, d: st.streamUrl });
+                    streams.push({
+                        name: "StreamViX (Proxy)",
+                        title: contentTitle,
+                        url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                        behaviorHints: { notWebReady: false }
+                    });
                 } else {
-                  // Se MFP non è configurato, aggiungi un link "Proxy mancante"
-                  console.log("Adding 'Proxy mancante' stream");
-                  streams.push({
-                    title: "StreamViX (Proxy mancante)", // Nome addon con (Proxy mancante)
-                    name: contentTitle, // Il titolo originale
-                    url: st.streamUrl, // URL originale
-                    behaviorHints: { notWebReady: true }
-                  });
+                    streams.push({
+                        name: "StreamViX (Proxy Mancante)",
+                        title: contentTitle,
+                        url: st.streamUrl,
+                        behaviorHints: { notWebReady: true }
+                    });
                 }
-              } else {
-                // Caso 2: Mostra un solo link
+            } else {
+                // Mostra solo un link: proxy se disponibile, altrimenti originale
                 if (hasMfp) {
-                  // Se MFP è configurato, mostra solo il proxy
-                  console.log("Adding only proxy stream");
-                  
-                  const params = new URLSearchParams({
-                    api_password: mfpPsw!,
-                    d: st.streamUrl // Passa l'URL originale
-                  });
-                  
-                  streams.push({
-                    title: "StreamViX (Proxy)", // Nome addon con (Proxy)
-                    name: contentTitle, // Il titolo originale
-                    url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                    behaviorHints: { notWebReady: false }
-                  });
+                    const params = new URLSearchParams({ api_password: mfpPsw!, d: st.streamUrl });
+                    streams.push({
+                        name: "StreamViX (Proxy)",
+                        title: contentTitle,
+                        url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                        behaviorHints: { notWebReady: false }
+                    });
                 } else {
-                  // Se MFP non è configurato, mostra solo l'originale
-                  console.log("Adding only original stream (no MFP)");
-                  streams.push({
-                    title: "StreamViX", // Solo il nome dell'addon
-                    name: contentTitle, // Il titolo originale
-                    url: st.streamUrl, // URL originale
-                    behaviorHints: { notWebReady: true }
-                  });
+                    streams.push({
+                        name: "StreamViX",
+                        title: contentTitle,
+                        url: st.streamUrl,
+                        behaviorHints: { notWebReady: true }
+                    });
                 }
-              }
             }
-            
-            // Debug
-            console.log(`Generated ${streams.length} streams`);
-            for (const s of streams) {
-              console.log(`Stream: ${s.title}, Name: ${s.name}, URL: ${s.url}`);
-            }
-            
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ streams }));
-          })
-          .catch(error => {
-            console.error('Error processing series:', error);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Failed to process series' }));
-          });
-      } else {
-        // Per film o serie senza formato speciale, usa il metodo originale
-        getStreamContent(id, type as any)
-          .then((streamResults) => {
-            if (!streamResults) {
-              console.log("No stream results found");
-              res.writeHead(404, { 'Content-Type': 'application/json' });
-              return res.end(JSON.stringify({ streams: [] }));
-            }
-            
-            // Ottieni configurazione MFP
-            const mfpUrl = process.env.MFP_URL;
-            const mfpPsw = process.env.MFP_PSW;
-            const hasMfp = !!mfpUrl && !!mfpPsw;
-            console.log(`MFP Configuration available: ${hasMfp}`);
-            
-            const streams = [];
-            
-            // Processa ogni risultato dello streaming
-            for (const st of streamResults) {
-              // Ignora i risultati senza URL
-              if (!st.streamUrl) {
-                console.log("Skipping result without URL");
-                continue;
-              }
-              
-              console.log(`Processing stream ${st.name || "unnamed"} with URL ${st.streamUrl}`);
-              
-              // Usa il titolo originale senza aggiunte
-              const contentTitle = st.name ?? "Stream";
-              
-              // Aggiungi log per diagnostica
-              console.log(`ShowBothLinks value: ${showBothLinksGlobal}, hasMFP: ${hasMfp}`);
-              
-              // Caso 1: Mostra entrambi i link (originale + proxy/mancante)
-              if (showBothLinksGlobal) {
-                // Aggiungi lo stream originale - SEMPRE URL ORIGINALE
-                console.log("Adding original stream (direct URL)");
-                streams.push({
-                  title: "StreamViX", // Solo il nome dell'addon 
-                  name: contentTitle, // Il titolo originale
-                  url: st.streamUrl, // URL originale
-                  behaviorHints: { notWebReady: true }
-                });
-                
-                // Se MFP è configurato, aggiungi lo stream proxy
-                if (hasMfp) {
-                  console.log("Adding MFP proxy stream");
-                  
-                  const params = new URLSearchParams({
-                    api_password: mfpPsw!,
-                    d: st.streamUrl // Passa l'URL originale
-                  });
-                  
-                  streams.push({
-                    title: "StreamViX (Proxy)", // Nome addon con (Proxy)
-                    name: contentTitle, // Il titolo originale
-                    url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                    behaviorHints: { notWebReady: false }
-                  });
-                } else {
-                  // Se MFP non è configurato, aggiungi un link "Proxy mancante"
-                  console.log("Adding 'Proxy mancante' stream");
-                  streams.push({
-                    title: "StreamViX (Proxy mancante)", // Nome addon con (Proxy mancante)
-                    name: contentTitle, // Il titolo originale
-                    url: st.streamUrl, // URL originale
-                    behaviorHints: { notWebReady: true }
-                  });
-                }
-              } else {
-                // Caso 2: Mostra un solo link
-                if (hasMfp) {
-                  // Se MFP è configurato, mostra solo il proxy
-                  console.log("Adding only proxy stream");
-                  
-                  const params = new URLSearchParams({
-                    api_password: mfpPsw!,
-                    d: st.streamUrl // Passa l'URL originale
-                  });
-                  
-                  streams.push({
-                    title: "StreamViX (Proxy)", // Nome addon con (Proxy)
-                    name: contentTitle, // Il titolo originale
-                    url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
-                    behaviorHints: { notWebReady: false }
-                  });
-                } else {
-                  // Se MFP non è configurato, mostra solo l'originale
-                  console.log("Adding only original stream (no MFP)");
-                  streams.push({
-                    title: "StreamViX", // Solo il nome dell'addon
-                    name: contentTitle, // Il titolo originale
-                    url: st.streamUrl, // URL originale
-                    behaviorHints: { notWebReady: true }
-                  });
-                }
-              }
-            }
-            
-            // Debug
-            console.log(`Generated ${streams.length} streams`);
-            for (const s of streams) {
-              console.log(`Stream: ${s.title}, Name: ${s.name}, URL: ${s.url}`);
-            }
-            
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ streams }));
-          })
-          .catch((error: Error) => {
-            console.error('Stream handler error:', error);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Stream handler failed' }));
-          });
-      }
-      return;
+        }
+
+        console.log(`Generated ${streams.length} streams for ${id}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ streams }));
+
+    } catch (error) {
+        console.error('Stream handler error:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Stream handler failed' }));
     }
   }
   
@@ -435,15 +228,8 @@ const server = http.createServer((req, res) => {
   res.end('Not Found');
 });
 
-// Avvia il server sulla porta specificata
+// Avvia il server
 server.listen(port, () => {
   console.log(`Addon active on port ${port}`);
   console.log(`Manifest available at http://localhost:${port}/manifest.json`);
 });
-
-// Quando hai distribuito il tuo addon, rimuovi il commento dalla riga seguente
-// publishToCentral("https://my-addon.awesome/manifest.json");
-/* 
- * Per maggiori informazioni sulla distribuzione, vedi:
- * https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/deploying/README.md
- */
