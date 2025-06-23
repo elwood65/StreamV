@@ -12,7 +12,7 @@ import * as url from 'url';
 
 // Configura porta e indirizzo
 const port = process.env.PORT ? parseInt(process.env.PORT) : 7860;
-const staticPath = path.join(__dirname, '..', 'src', 'public');
+const staticPath = path.join(__dirname, '..', 'public');
 
 // Ottieni l'interfaccia addon
 const addonInterface = addon.getInterface();
@@ -59,35 +59,50 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/' || pathname === '') {
     try {
       const landingPath = path.join(staticPath, 'landing.html');
+      console.log('Trying to serve landing page from:', landingPath);
       if (fs.existsSync(landingPath)) {
         const content = fs.readFileSync(landingPath, 'utf8');
         res.writeHead(200, { 'Content-Type': 'text/html' });
         return res.end(content);
+      } else {
+        console.error('Landing page file not found at:', landingPath);
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        return res.end('Landing page not found');
       }
     } catch (error) {
       console.error('Error serving landing page:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      return res.end('Internal Server Error');
     }
   }
   
   // Gestione file statici
   if (pathname.startsWith('/public/')) {
-    const filename = path.basename(pathname);
-    const filePath = path.join(staticPath, filename);
+    try {
+      const filename = path.basename(pathname);
+      const filePath = path.join(staticPath, filename);
+      console.log('Trying to serve static file from:', filePath);
 
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath);
-      const ext = path.extname(filePath).toLowerCase();
-      let contentType = 'text/plain';
-      if (ext === '.png') contentType = 'image/png';
-      if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
-      if (ext === '.css') contentType = 'text/css';
-      if (ext === '.js') contentType = 'text/javascript';
-      res.writeHead(200, { 'Content-Type': contentType });
-      return res.end(content);
-    } else {
-      console.error(`Static file not found at: ${filePath}`);
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      return res.end('Not Found');
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        let contentType = 'text/plain';
+        if (ext === '.png') contentType = 'image/png';
+        if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+        if (ext === '.css') contentType = 'text/css';
+        if (ext === '.js') contentType = 'text/javascript';
+        if (ext === '.html') contentType = 'text/html';
+        res.writeHead(200, { 'Content-Type': contentType });
+        return res.end(content);
+      } else {
+        console.error(`Static file not found at: ${filePath}`);
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        return res.end('File not found');
+      }
+    } catch (error) {
+      console.error('Error serving static file:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      return res.end('Internal Server Error');
     }
   }
   
