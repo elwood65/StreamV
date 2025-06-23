@@ -1,3 +1,4 @@
+![image](https://github.com/user-attachments/assets/11956b44-f742-42cc-a9f0-40fbb1c9de61)
 # 🎬 StreamViX
 
 Un addon per Stremio che estrae sorgenti streaming dal sito vixsrc per permetterti di guardare film e serie TV con la massima semplicità.
