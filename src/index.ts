@@ -158,16 +158,15 @@ const server = http.createServer(async (req, res) => {
 
     try {
         if (type === 'series' && id.includes(':')) {
-            const tmdbData = await convertImdbToTmdb(id);
-            if (tmdbData) {
-                // **CORREZIONE**: Invece di creare un link incompleto, passiamo un ID specifico per le serie
-                // all'estrattore, forzandolo a risolvere il link finale come fa per i film.
-                const seriesIdForExtractor = `${tmdbData.tmdbId}:${tmdbData.season}:${tmdbData.episode}`;
-                console.log(`Calling getStreamContent for series with TMDB-based ID: ${seriesIdForExtractor}`);
-                streamResults = await getStreamContent(seriesIdForExtractor, 'series');
+            // Chiamiamo l'estrattore con l'ID IMDb originale, che è quello che si aspetta.
+            console.log(`Calling getStreamContent for series with IMDb-based ID: ${id}`);
+            streamResults = await getStreamContent(id, 'series');
 
-                // Assicuriamoci che il nome del risultato sia corretto
-                if (streamResults && streamResults.length > 0) {
+            // Se otteniamo risultati, ci assicuriamo che il nome sia corretto.
+            // Eseguiamo la conversione a TMDB solo per ottenere il titolo corretto.
+            if (streamResults && streamResults.length > 0) {
+                const tmdbData = await convertImdbToTmdb(id);
+                if (tmdbData) {
                     const episodeName = `${tmdbData.title} S${tmdbData.season}E${tmdbData.episode}`;
                     streamResults.forEach(st => {
                         if (!st.name || !st.name.includes(tmdbData.title)) {
