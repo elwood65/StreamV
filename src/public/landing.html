@@ -11,9 +11,9 @@
             text-align: center;
             padding: 50px;
             background-image: url('/public/backround.png');
-            background-size: contain; /* MODIFICATO: da 'cover' a 'contain' */
+            background-size: cover; /* MODIFICATO: Riportato a 'cover' per riempire lo schermo */
             background-position: center;
-            background-repeat: no-repeat; /* AGGIUNTO: per evitare ripetizioni */
+            background-repeat: no-repeat;
         }
         h1 { color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         .logo {
@@ -86,12 +86,12 @@
 <body>
     <img class="logo" src="/public/icon.png" alt="StreamViX Logo" />
     <h1>StreamViX</h1>
-    <h2>A custom VixSrc extractor for Stremio</h2>
+    <h2>A custom hls extractor for Stremio</h2>
     
     <div class="option-container">
         <div class="checkbox-wrapper">
             <input type="checkbox" id="showBothLinks" name="showBothLinks">
-            <label for="showBothLinks">Show Both Links (with and without proxy)</label>
+            <label for="showBothLinks">Show Both Links</label>
         </div>
         <p>Se abilitato, mostra sia i link con proxy che senza proxy, anche quando il proxy non è disponibile</p>
     </div>
