@@ -264,7 +264,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           if (data.query_params) {
             const params = new URLSearchParams();
             for (const [key, value] of Object.entries(data.query_params)) {
-              params.append(key, value as string);
+              params.append(key, String(value)); // Converti esplicitamente a string
             }
             
             // Se l'URL ha già parametri, aggiungi & altrimenti ?
@@ -280,7 +280,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           // Aggiungi gli header come parametri h_
           if (data.request_headers) {
             for (const [key, value] of Object.entries(data.request_headers)) {
-              const headerParam = `h_${key}=${encodeURIComponent(value as string)}`;
+              const headerParam = `h_${key}=${encodeURIComponent(String(value))}`;
               finalUrl += '&' + headerParam;
             }
           }
@@ -334,13 +334,17 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   async function getDirectStream(): Promise<VixCloudStreamInfo | null> {
     const siteOrigin = new URL(targetUrl).origin;
     let pageHtml = "";
-    let finalReferer = targetUrl;
+    let finalReferer: string = targetUrl; // Assicurati che sia sempre string
 
     try {
       if (targetUrl.includes("/iframe")) { 
         const version = await fetchVixCloudSiteVersion(siteOrigin);
         const initialResponse = await fetch(targetUrl, {
-          headers: { "x-inertia": "true", "x-inertia-version": version, "Referer": `${siteOrigin}/` },
+          headers: { 
+            "x-inertia": "true", 
+            "x-inertia-version": version, 
+            "Referer": `${siteOrigin}/` 
+          },
         });
         if (!initialResponse.ok) throw new Error(`Initial iframe request failed: ${initialResponse.status}`);
         const initialHtml = await initialResponse.text();
@@ -350,7 +354,11 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
         if (iframeSrc) {
           const actualPlayerUrl = new URL(iframeSrc, siteOrigin).toString();
           const playerResponse = await fetch(actualPlayerUrl, {
-            headers: { "x-inertia": "true", "x-inertia-version": version, "Referer": targetUrl },
+            headers: { 
+              "x-inertia": "true", 
+              "x-inertia-version": version, 
+              "Referer": targetUrl 
+            },
           });
           if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
           pageHtml = await playerResponse.text();
@@ -408,10 +416,10 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     
       // Solo se TMDB fallisce, prova a usare il titolo dalla pagina
       if (!baseTitle) {
-        baseTitle = $("title").text().trim();
+        const pageTitle = $("title").text().trim();
         // Pulisci ulteriormente il titolo rimuovendo parti comuni nei siti di streaming
-        if (baseTitle) {
-          baseTitle = baseTitle
+        if (pageTitle) {
+          baseTitle = pageTitle
             .replace(" - VixSrc", "")
             .replace(" - Guarda Online", "")
             .replace(" - Streaming", "")
@@ -473,22 +481,4 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     const proxyStream = await getProxyStream();
     const directStream = await getDirectStream();
     
-    if (proxyStream) results.push(proxyStream);
-    if (directStream) results.push(directStream);
-    
-    return results.length > 0 ? results : null;
-  } else {
-    // Logica originale: proxy se configurato, altrimenti direct
-    if (MFP_URL && MFP_PSW) {
-      // --- Proxy Mode ---
-      const proxyStream = await getProxyStream();
-      return proxyStream ? [proxyStream] : null;
-    } else {
-      // --- Direct Extraction Mode (if proxy not configured) ---
-      const directStream = await getDirectStream();
-      return directStream ? [directStream] : null;
-    }
-  }
-}
-
-export { getStreamContent };
+    if
