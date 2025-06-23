@@ -70,6 +70,30 @@ async function convertImdbToTmdb(imdbId: string): Promise<SeriesData | null> {
   }
 }
 
+/**
+ * Estrae l'URL originale se l'URL fornito è un link proxy di questo addon.
+ * @param {string} proxyUrl L'URL potenzialmente proxato.
+ * @returns {string} L'URL originale.
+ */
+function extractOriginalUrl(proxyUrl: string): string {
+  try {
+    const urlObj = new URL(proxyUrl);
+    // Controlla se è un URL proxy e ha il parametro 'd'
+    if (proxyUrl.includes('/proxy/hls/manifest.m3u8') && urlObj.searchParams.has('d')) {
+      const originalUrl = urlObj.searchParams.get('d');
+      if (originalUrl) {
+        console.log("Extracted original URL from proxy link:", originalUrl);
+        return originalUrl;
+      }
+    }
+  } catch (e) {
+    // Non è un URL valido o non è un proxy, quindi lo trattiamo come originale.
+  }
+  // Se non è un link proxy, restituiscilo così com'è.
+  return proxyUrl;
+}
+
+
 // Crea un server HTTP personalizzato
 const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url || '', true);
@@ -126,7 +150,6 @@ const server = http.createServer(async (req, res) => {
         return res.end('Not Found');
     }
 
-    // **CORREZIONE 1: Decodifica l'ID per gestire i ":" nelle serie TV**
     id = decodeURIComponent(id);
     console.log(`Extracting stream for id: ${id}, type: ${type}`);
 
@@ -158,17 +181,17 @@ const server = http.createServer(async (req, res) => {
         const hasMfp = !!mfpUrl && !!mfpPsw;
         const streams = [];
 
-        // **CORREZIONE FINALE: Logica per i link e inversione titoli**
         for (const st of streamResults) {
             if (!st.streamUrl) {
                 console.log('Stream result skipped, no streamUrl');
                 continue;
             }
 
-            const contentTitle = st.name ?? "Stream"; // Es: "Pulp Fiction 1080p"
-            const originalUrl = st.streamUrl;
+            // **CHIAVE DELLA CORREZIONE**: Estrai l'URL originale per sicurezza
+            const originalUrl = extractOriginalUrl(st.streamUrl);
+            const contentTitle = st.name ?? "Stream";
             
-            console.log(`Processing stream: "${contentTitle}" with original URL: ${originalUrl}`);
+            console.log(`Processing stream: "${contentTitle}". Received URL: ${st.streamUrl}. Deduced Original URL: ${originalUrl}`);
             console.log(`Config: showBothLinks=${showBothLinksGlobal}, hasMfp=${hasMfp}`);
 
             const mfpProxyUrl = hasMfp 
@@ -177,28 +200,25 @@ const server = http.createServer(async (req, res) => {
 
             if (showBothLinksGlobal) {
                 // --- LINK 1: Originale (NON PROXY) ---
-                console.log(`Adding ORIGINAL link. URL: ${originalUrl}`);
                 streams.push({
-                    name: contentTitle,
-                    title: "StreamViX",
-                    url: originalUrl,
+                    name: "StreamViX",
+                    title: contentTitle,
+                    url: originalUrl, // Usa sempre l'URL de-proxato
                     behaviorHints: { notWebReady: true }
                 });
 
                 // --- LINK 2: Proxy o Placeholder ---
                 if (mfpProxyUrl) {
-                    console.log(`Adding PROXY link. URL: ${mfpProxyUrl}`);
                     streams.push({
-                        name: contentTitle,
-                        title: "StreamViX (Proxy)",
+                        name: "StreamViX (Proxy)",
+                        title: contentTitle,
                         url: mfpProxyUrl,
                         behaviorHints: { notWebReady: false }
                     });
                 } else {
-                    console.log(`Adding PROXY MISSING link. URL: ${originalUrl}`);
                     streams.push({
-                        name: contentTitle,
-                        title: "StreamViX (Proxy Mancante)",
+                        name: "StreamViX (Proxy Mancante)",
+                        title: contentTitle,
                         url: originalUrl, // Fallback a originale
                         behaviorHints: { notWebReady: true }
                     });
@@ -206,18 +226,16 @@ const server = http.createServer(async (req, res) => {
             } else {
                 // --- Mostra solo un link ---
                 if (mfpProxyUrl) {
-                    console.log(`Adding PROXY-ONLY link. URL: ${mfpProxyUrl}`);
                     streams.push({
-                        name: contentTitle,
-                        title: "StreamViX (Proxy)",
+                        name: "StreamViX (Proxy)",
+                        title: contentTitle,
                         url: mfpProxyUrl,
                         behaviorHints: { notWebReady: false }
                     });
                 } else {
-                    console.log(`Adding ORIGINAL-ONLY link. URL: ${originalUrl}`);
                     streams.push({
-                        name: contentTitle,
-                        title: "StreamViX",
+                        name: "StreamViX",
+                        title: contentTitle,
                         url: originalUrl,
                         behaviorHints: { notWebReady: true }
                     });
