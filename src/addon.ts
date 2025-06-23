@@ -6,7 +6,7 @@ import * as path from 'path';
 // Base manifest configuration
 const baseManifest: Manifest = {
     id: "org.prisonmike.streamvix",
-    version: "1.0.0",
+    version: "1.2.0",
     catalogs: [],
     resources: [
         {
