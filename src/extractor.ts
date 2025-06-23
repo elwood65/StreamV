@@ -209,7 +209,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   }
 
   // Funzione per ottenere il proxy stream
-  async function getProxyStream(): Promise<VixCloudStreamInfo | null> {
+  async function getProxyStream(url: string): Promise<VixCloudStreamInfo | null> {
     if (!MFP_URL || !MFP_PSW) {
       // Se BOTHLINK è true ma manca il proxy, restituisci un placeholder
       if (BOTHLINK) {
@@ -225,22 +225,17 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           fallbackName += ' (Proxy Missing)';
         }
         
-        // Ensure targetUrl is not null before using it
-        if (!targetUrl) {
-          return null;
-        }
-        
         return {
           name: fallbackName,
           streamUrl: '', // URL vuoto per indicare che il proxy manca
-          referer: targetUrl,
+          referer: url,
           source: 'proxy'
         };
       }
       return null;
     }
 
-    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(targetUrl || '')}`;
+    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(url)}`;
     console.log(`Proxy mode active. Generated proxy URL for ${id}: ${proxyStreamUrl}`);
 
     // Nuova funzione asincrona per ottenere l'URL m3u8 finale
@@ -335,31 +330,22 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     return { 
       name: finalNameForProxy, 
       streamUrl: finalStreamUrl, 
-      referer: targetUrl, 
+      referer: url, 
       source: 'proxy' 
     };
   }
 
   // Funzione per ottenere il direct stream
-  async function getDirectStream(): Promise<VixCloudStreamInfo | null> {
-    // Early return if targetUrl is null
-    if (!targetUrl) {
-      console.error("Target URL is null");
-      return null;
-    }
-
-    // Create a non-null local variable that TypeScript can track
-    const safeTargetUrl: string = targetUrl;
-    
-    // Now TypeScript knows safeTargetUrl is definitely a string
-    const siteOrigin = new URL(safeTargetUrl).origin;
+  async function getDirectStream(url: string): Promise<VixCloudStreamInfo | null> {
+    // The 'url' parameter is guaranteed to be a string, so no more null checks needed here.
+    const siteOrigin = new URL(url).origin;
     let pageHtml = "";
-    let finalReferer: string = safeTargetUrl; // Now this is properly typed as string
+    let finalReferer: string = url;
 
     try {
-      if (safeTargetUrl.includes("/iframe")) { 
+      if (url.includes("/iframe")) { 
         const version = await fetchVixCloudSiteVersion(siteOrigin);
-        const initialResponse = await fetch(safeTargetUrl, {
+        const initialResponse = await fetch(url, {
           headers: { 
             "x-inertia": "true", 
             "x-inertia-version": version, 
@@ -377,7 +363,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
             headers: { 
               "x-inertia": "true", 
               "x-inertia-version": version, 
-              "Referer": safeTargetUrl
+              "Referer": url
             },
           });
           if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
@@ -387,7 +373,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           throw new Error("Iframe src not found in initial response.");
         }
       } else {
-        const response = await fetch(safeTargetUrl); // targetUrl is already checked for null
+        const response = await fetch(url); 
         if (!response.ok) throw new Error(`Direct embed request failed: ${response.status}`);
         pageHtml = await response.text();
         // Non modificare finalReferer qui, rimane targetUrl
@@ -499,8 +485,8 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     // Se BOTHLINK è true, ottieni entrambi i stream
     console.log('BOTHLINK mode: fetching both proxy and direct streams');
     
-    const proxyStream = await getProxyStream();
-    const directStream = await getDirectStream();
+    const proxyStream = await getProxyStream(targetUrl);
+    const directStream = await getDirectStream(targetUrl);
     
     if (proxyStream) results.push(proxyStream);
     if (directStream) results.push(directStream);
@@ -510,11 +496,11 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     // Logica originale: proxy se configurato, altrimenti direct
     if (MFP_URL && MFP_PSW) {
       // --- Proxy Mode ---
-      const proxyStream = await getProxyStream();
+      const proxyStream = await getProxyStream(targetUrl);
       return proxyStream ? [proxyStream] : null;
     } else {
       // --- Direct Extraction Mode (if proxy not configured) ---
-      const directStream = await getDirectStream();
+      const directStream = await getDirectStream(targetUrl);
       return directStream ? [directStream] : null;
     }
   }
