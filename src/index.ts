@@ -136,8 +136,8 @@ const server = http.createServer(async (req, res) => {
 
         if (!streamResults || streamResults.length === 0) {
             console.log("No stream results found for:", id);
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ streams: [] }));
+            res.writeHead(200, { 'Content-Type': 'application/json' }); // CORREZIONE: Rispondi sempre con 200 OK
+            return res.end(JSON.stringify({ streams: [] })); // Invia un array vuoto
         }
 
         const mfpUrl = process.env.MFP_URL;
