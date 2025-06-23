@@ -1,4 +1,4 @@
-import { addonBuilder, Manifest } from 'stremio-addon-sdk';
+import { addonBuilder, Manifest, StreamHandlerArgs } from 'stremio-addon-sdk';
 import { getStreamContent } from './extractor';
 import config from '../addon-config.json';
 
@@ -29,9 +29,10 @@ const manifest: Manifest = {
 
 const builder = new addonBuilder(manifest);
 
-builder.defineStreamHandler(async ({ type, id }) => {
-    console.log(`Handler chiamato per ${type} ${id}. Flag showBothLinks: ${showBothLinksGlobal}`);
-    const streams = await getStreamContent(id, type as ('movie' | 'series'), showBothLinksGlobal);
+// Aggiungi il tipo 'StreamHandlerArgs' per risolvere l'errore 'implicitly has an any type'
+builder.defineStreamHandler(async (args: StreamHandlerArgs) => {
+    console.log(`Handler chiamato per ${args.type} ${args.id}. Flag showBothLinks: ${showBothLinksGlobal}`);
+    const streams = await getStreamContent(args.id, args.type as ('movie' | 'series'), showBothLinksGlobal);
     return { streams };
 });
 
