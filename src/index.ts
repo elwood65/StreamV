@@ -125,8 +125,12 @@ const server = http.createServer(async (req, res) => {
   
   // Gestione file statici
   if (pathname.startsWith('/public/')) {
-    // CORREZIONE: Rimuovi la barra iniziale (/) da 'pathname' per costruire il percorso corretto.
-    const filePath = path.join(__dirname, '..', 'src', pathname.substring(1));
+    // CORREZIONE: Usa la variabile 'staticPath' già definita per costruire un percorso affidabile.
+    const filename = path.basename(pathname);
+    const filePath = path.join(staticPath, filename);
+
+    console.log(`Attempting to serve static file: ${filePath}`); // Log per debug
+
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath);
       const ext = path.extname(filePath).toLowerCase();
@@ -137,6 +141,10 @@ const server = http.createServer(async (req, res) => {
       if (ext === '.js') contentType = 'text/javascript';
       res.writeHead(200, { 'Content-Type': contentType });
       return res.end(content);
+    } else {
+      console.error(`Static file not found at: ${filePath}`);
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      return res.end('Not Found');
     }
   }
   
@@ -271,5 +279,6 @@ const server = http.createServer(async (req, res) => {
 
 // Avvia il server
 server.listen(port, () => {
-  console.log(`Addon active on port ${port}`);  console.log(`Manifest available at http://localhost:${port}/manifest.json`);
+  console.log(`Addon active on port ${port}`);
+  console.log(`Manifest available at http://localhost:${port}/manifest.json`);
 });
