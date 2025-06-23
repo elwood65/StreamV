@@ -91,13 +91,16 @@
     <script>
         function installAddon() {
             const showBothLinks = document.getElementById('showBothLinks').checked;
-            const manifestUrl = `${window.location.origin}/manifest.json?showBothLinks=${showBothLinks}`;
-            window.location = `stremio://${window.location.host}/manifest.json?showBothLinks=${showBothLinks}`;
+            // Se la checkbox è attiva, usa il path /both/manifest.json, altrimenti /manifest.json
+            const manifestPath = showBothLinks ? '/both/manifest.json' : '/manifest.json';
+            window.location = `stremio://${window.location.host}${manifestPath}`;
         }
         
         function copyManifestLink() {
             const showBothLinks = document.getElementById('showBothLinks').checked;
-            const manifestUrl = `${window.location.origin}/manifest.json?showBothLinks=${showBothLinks}`;
+            // Se la checkbox è attiva, usa il path /both/manifest.json, altrimenti /manifest.json
+            const manifestPath = showBothLinks ? '/both/manifest.json' : '/manifest.json';
+            const manifestUrl = `${window.location.origin}${manifestPath}`;
             navigator.clipboard.writeText(manifestUrl).then(() => {
                 alert('Link del manifest copiato negli appunti!');
             });
