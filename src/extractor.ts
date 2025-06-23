@@ -351,7 +351,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     // Now TypeScript knows targetUrl is not null for the rest of the function
     const siteOrigin = new URL(targetUrl).origin;
     let pageHtml = "";
-    const finalReferer = targetUrl; // Now we can assign it directly as we know it's not null
+    let finalReferer: string = targetUrl; // Changed from const to let
 
     try {
       if (targetUrl.includes("/iframe")) { 
@@ -360,7 +360,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           headers: { 
             "x-inertia": "true", 
             "x-inertia-version": version, 
-            "Referer": `${siteOrigin}/` // This is always a string
+            "Referer": `${siteOrigin}/`
           },
         });
         if (!initialResponse.ok) throw new Error(`Initial iframe request failed: ${initialResponse.status}`);
@@ -374,12 +374,12 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
             headers: { 
               "x-inertia": "true", 
               "x-inertia-version": version, 
-              "Referer": targetUrl // targetUrl is already checked for null
+              "Referer": targetUrl
             },
           });
           if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
           pageHtml = await playerResponse.text();
-          finalReferer = actualPlayerUrl;
+          finalReferer = actualPlayerUrl; // Now we can modify finalReferer
         } else {
           throw new Error("Iframe src not found in initial response.");
         }
