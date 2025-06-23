@@ -160,13 +160,24 @@ const server = http.createServer(async (req, res) => {
         if (type === 'series' && id.includes(':')) {
             const tmdbData = await convertImdbToTmdb(id);
             if (tmdbData) {
-                const streamUrl = `https://vixsrc.to/tv/${tmdbData.tmdbId}-${tmdbData.season}-${tmdbData.episode}`;
-                streamResults = [{
-                    name: `${tmdbData.title} S${tmdbData.season}E${tmdbData.episode}`,
-                    streamUrl: streamUrl
-                }];
+                // **CORREZIONE**: Invece di creare un link incompleto, passiamo un ID specifico per le serie
+                // all'estrattore, forzandolo a risolvere il link finale come fa per i film.
+                const seriesIdForExtractor = `${tmdbData.tmdbId}:${tmdbData.season}:${tmdbData.episode}`;
+                console.log(`Calling getStreamContent for series with TMDB-based ID: ${seriesIdForExtractor}`);
+                streamResults = await getStreamContent(seriesIdForExtractor, 'series');
+
+                // Assicuriamoci che il nome del risultato sia corretto
+                if (streamResults && streamResults.length > 0) {
+                    const episodeName = `${tmdbData.title} S${tmdbData.season}E${tmdbData.episode}`;
+                    streamResults.forEach(st => {
+                        if (!st.name || !st.name.includes(tmdbData.title)) {
+                           st.name = episodeName;
+                        }
+                    });
+                }
             }
         } else {
+            // La logica per i film (che funziona) rimane invariata
             streamResults = await getStreamContent(id, type);
         }
 
@@ -187,9 +198,8 @@ const server = http.createServer(async (req, res) => {
                 continue;
             }
 
-            // **CHIAVE DELLA CORREZIONE**: Estrai l'URL originale per sicurezza
             const originalUrl = extractOriginalUrl(st.streamUrl);
-            const contentTitle = st.name ?? "Stream";
+            const contentTitle = st.name ?? "Stream"; // Es. "The Last of Us S01E01"
             
             console.log(`Processing stream: "${contentTitle}". Received URL: ${st.streamUrl}. Deduced Original URL: ${originalUrl}`);
             console.log(`Config: showBothLinks=${showBothLinksGlobal}, hasMfp=${hasMfp}`);
@@ -203,7 +213,7 @@ const server = http.createServer(async (req, res) => {
                 streams.push({
                     name: "StreamViX",
                     title: contentTitle,
-                    url: originalUrl, // Usa sempre l'URL de-proxato
+                    url: originalUrl,
                     behaviorHints: { notWebReady: true }
                 });
 
@@ -219,7 +229,7 @@ const server = http.createServer(async (req, res) => {
                     streams.push({
                         name: "StreamViX (Proxy Mancante)",
                         title: contentTitle,
-                        url: originalUrl, // Fallback a originale
+                        url: originalUrl,
                         behaviorHints: { notWebReady: true }
                     });
                 }
@@ -261,6 +271,5 @@ const server = http.createServer(async (req, res) => {
 
 // Avvia il server
 server.listen(port, () => {
-  console.log(`Addon active on port ${port}`);
-  console.log(`Manifest available at http://localhost:${port}/manifest.json`);
+  console.log(`Addon active on port ${port}`);  console.log(`Manifest available at http://localhost:${port}/manifest.json`);
 });
