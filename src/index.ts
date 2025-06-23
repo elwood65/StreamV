@@ -102,8 +102,9 @@ const server = http.createServer(async (req, res) => {
   console.log(`Received request: ${req.url}`);
   
   // Gestione manifest
-  if (pathname === '/manifest.json') {
-    const showBothLinks = parsedUrl.query.showBothLinks === 'true';
+  if (pathname === '/manifest.json' || pathname === '/both/manifest.json') {
+    // Se la path contiene 'both', attiva il flag
+    const showBothLinks = pathname === '/both/manifest.json';
     setShowBothLinks(showBothLinks);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify(addonInterface.manifest));
