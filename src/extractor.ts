@@ -225,6 +225,11 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           fallbackName += ' (Proxy Missing)';
         }
         
+        // Ensure targetUrl is not null before using it
+        if (!targetUrl) {
+          return null;
+        }
+        
         return {
           name: fallbackName,
           streamUrl: '', // URL vuoto per indicare che il proxy manca
@@ -337,10 +342,14 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
 
   // Funzione per ottenere il direct stream
   async function getDirectStream(): Promise<VixCloudStreamInfo | null> {
+    // Ensure targetUrl is not null before using it
+    if (!targetUrl) {
+      return null;
+    }
+
     const siteOrigin = new URL(targetUrl).origin;
     let pageHtml = "";
-    // Dichiara finalReferer come una variabile che deve essere inizializzata
-    let finalReferer = targetUrl;
+    let finalReferer: string = targetUrl; // Initialize as string, not string | null
 
     try {
       if (targetUrl.includes("/iframe")) { 
@@ -349,7 +358,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           headers: { 
             "x-inertia": "true", 
             "x-inertia-version": version, 
-            "Referer": `${siteOrigin}/` 
+            "Referer": `${siteOrigin}/` // This is always a string
           },
         });
         if (!initialResponse.ok) throw new Error(`Initial iframe request failed: ${initialResponse.status}`);
@@ -363,7 +372,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
             headers: { 
               "x-inertia": "true", 
               "x-inertia-version": version, 
-              "Referer": targetUrl 
+              "Referer": targetUrl // targetUrl is already checked for null
             },
           });
           if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
@@ -372,8 +381,8 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
         } else {
           throw new Error("Iframe src not found in initial response.");
         }
-      } else { 
-        const response = await fetch(targetUrl);
+      } else {
+        const response = await fetch(targetUrl); // targetUrl is already checked for null
         if (!response.ok) throw new Error(`Direct embed request failed: ${response.status}`);
         pageHtml = await response.text();
         // Non modificare finalReferer qui, rimane targetUrl
