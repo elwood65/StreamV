@@ -119,8 +119,8 @@ const server = http.createServer(async (req, res) => {
     let id = parts[3]?.replace('.json', '');
 
     if (!type || !id) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        return res.end('Not Found');
+        res.writeHead(200, { 'Content-Type': 'application/json' }); // Rispondi 200 OK
+        return res.end(JSON.stringify({ streams: [] })); // Con un array di stream vuoto
     }
 
     id = decodeURIComponent(id);
