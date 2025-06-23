@@ -145,6 +145,8 @@ Crea il file `.env`: Crea un file chiamato `.env` nella root del progetto (nella
     MFP_URL=[https://username-mfp.hf.space](https://username-mfp.hf.space)
     MFP_PSW=la_tua_password_mfp
     PORT="portacustom"
+    BOTHLINK="true"   true o false (mostra entrambi i link MFP e DIRECT)    
+
 
 4.  **Compila il progetto:**
     ```
@@ -163,6 +165,7 @@ Questo progetto è inteso esclusivamente a scopo educativo. L'utente è l'unico 
 
 
 ## Credits
-Original extraction logic written by https://github.com/mhdzumair for the extractor code https://github.com/mhdzumair/mediaflow-proxy
+
+Original extraction logic written by https://github.com/mhdzumair for the extractor code https://github.com/mhdzumair/mediaflow-proxy 
 Thanks to https://github.com/ThEditor https://github.com/ThEditor/stremsrc for the main code and stremio addon
 
