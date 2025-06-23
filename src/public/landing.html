@@ -17,26 +17,25 @@
             background-repeat: no-repeat;
             font-family: Arial, sans-serif;
             
-            /* Usa Flexbox per posizionare il contenitore */
+            /* Usa Flexbox per centrare il contenitore */
             display: flex;
             align-items: center; /* Centra verticalmente */
-            justify-content: flex-start; /* Allinea a sinistra */
+            justify-content: center; /* Centra orizzontalmente */
         }
         
         /* Contenitore principale per posizionare l'intero blocco */
         .content-container {
             max-width: 450px;
-            margin-left: 22vw; /* SPOSTATO: da 10vw a 25vw, più a destra */
-            text-align: left; /* ALLINEATO A SINISTRA: per logo e titolo */
+            text-align: center; /* Centra tutto il contenuto al suo interno */
             color: #fff;
         }
 
         .logo {
             width: 120px; /* Leggermente più piccolo per adattarsi meglio */
             display: block;
+            margin: 0 auto 15px auto; /* Centra il logo e aggiunge spazio sotto */
             border-radius: 25%;
             box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            margin-bottom: 15px; /* Aggiunge spazio sotto il logo */
         }
         h1 { 
             color: #fff; 
@@ -51,7 +50,6 @@
             background: rgba(0, 0, 0, 0.6); /* Sfondo semi-trasparente */
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            text-align: center; /* Mantiene il testo interno centrato */
         }
 
         button {
