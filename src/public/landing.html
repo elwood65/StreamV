@@ -4,20 +4,43 @@
     <meta charset="utf-8">
     <title>StreamViX - Stremio Addon</title>
     <style>
-        body {
-            background: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background-image: url('/public/backround.png');
-            background-size: cover; /* MODIFICATO: Riportato a 'cover' per riempire lo schermo */
-            background-position: center;
-            background-repeat: no-repeat;
+        /* Assicura che lo sfondo copra l'intera altezza della pagina */
+        html {
+            height: 100%;
         }
-        h1 { color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        body {
+            height: 100%;
+            margin: 0; /* Rimuove i margini di default */
+            background-image: url('/public/backround.png');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            font-family: Arial, sans-serif;
+            
+            /* Usa Flexbox per posizionare il contenitore */
+            display: flex;
+            align-items: center; /* Centra verticalmente */
+            justify-content: flex-start; /* Allinea a sinistra */
+        }
+        
+        /* Contenitore per tutti gli elementi della pagina */
+        .content-container {
+            max-width: 450px;
+            margin-left: 10vw; /* Sposta il contenitore del 10% dal bordo sinistro */
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.6); /* Sfondo semi-trasparente per leggibilità */
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            color: #fff;
+        }
+
+        h1 { 
+            color: #fff; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); 
+        }
         .logo {
-            width: 150px;
+            width: 120px; /* Leggermente più piccolo per adattarsi meglio */
             margin: 0 auto;
             display: block;
             border-radius: 25%;
@@ -39,7 +62,7 @@
             background: #9B6BC3;
         }
         .footer {
-            margin-top: 50px;
+            margin-top: 30px;
             font-size: 14px;
             color: #999;
         }
@@ -51,7 +74,6 @@
             text-decoration: underline;
         }
         .option-container {
-            background: rgba(0,0,0,0.7);
             padding: 15px;
             margin: 20px auto;
             max-width: 400px;
@@ -84,24 +106,26 @@
     </script>
 </head>
 <body>
-    <img class="logo" src="/public/icon.png" alt="StreamViX Logo" />
-    <h1>StreamViX</h1>
-    <h2>A custom hls extractor for Stremio</h2>
-    
-    <div class="option-container">
-        <div class="checkbox-wrapper">
-            <input type="checkbox" id="showBothLinks" name="showBothLinks">
-            <label for="showBothLinks">Show Both Links</label>
+    <!-- Raggruppa tutti gli elementi in un unico contenitore -->
+    <div class="content-container">
+        <img class="logo" src="/public/icon.png" alt="StreamViX Logo">
+        <h1>StreamViX</h1>
+        <h2>A custom VixSrc extractor for Stremio</h2>
+        
+        <div class="option-container">
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="showBothLinks" name="showBothLinks">
+                <label for="showBothLinks">Show Both Links (with and without proxy)</label>
+            </div>
+            <p>Se abilitato, mostra sia i link con proxy che senza proxy, anche quando il proxy non è disponibile</p>
         </div>
-        <p>Se abilitato, mostra sia i link con proxy che senza proxy, anche quando il proxy non è disponibile</p>
+        
+        <button onclick="installAddon()">Aggiungi a Stremio</button>
+        <button onclick="copyManifestLink()">Copia URL Manifest</button>
+        
+        <div class="footer">
+            <p>StreamViX v1.2.0</p>
+        </div>
     </div>
-    
-    <button onclick="installAddon()">Aggiungi a Stremio</button>
-    <button onclick="copyManifestLink()">Copia URL Manifest</button>
-    
-    <div class="footer">
-        <p>StreamViX v1.2.0</p> <!-- MODIFICATO: da 1.0.0 a 1.2.0 -->
-    </div>
-
 
 <deepl-input-controller translate="no"></deepl-input-controller></body></html>
