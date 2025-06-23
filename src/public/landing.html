@@ -11,8 +11,9 @@
             text-align: center;
             padding: 50px;
             background-image: url('/public/backround.png');
-            background-size: cover;
+            background-size: contain; /* MODIFICATO: da 'cover' a 'contain' */
             background-position: center;
+            background-repeat: no-repeat; /* AGGIUNTO: per evitare ripetizioni */
         }
         h1 { color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         .logo {
@@ -99,7 +100,8 @@
     <button onclick="copyManifestLink()">Copia URL Manifest</button>
     
     <div class="footer">
-        <p>StreamViX v1.0.0</p>
+        <p>StreamViX v1.2.0</p> <!-- MODIFICATO: da 1.0.0 a 1.2.0 -->
     </div>
-</body>
-</html>
+
+
+<deepl-input-controller translate="no"></deepl-input-controller></body></html>
