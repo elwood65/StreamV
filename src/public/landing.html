@@ -23,29 +23,37 @@
             justify-content: flex-start; /* Allinea a sinistra */
         }
         
-        /* Contenitore per tutti gli elementi della pagina */
+        /* Contenitore principale per posizionare l'intero blocco */
         .content-container {
             max-width: 450px;
-            margin-left: 10vw; /* Sposta il contenitore del 10% dal bordo sinistro */
-            padding: 30px;
-            background: rgba(0, 0, 0, 0.6); /* Sfondo semi-trasparente per leggibilità */
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            text-align: center;
+            margin-left: 22vw; /* SPOSTATO: da 10vw a 25vw, più a destra */
+            text-align: left; /* ALLINEATO A SINISTRA: per logo e titolo */
             color: #fff;
         }
 
-        h1 { 
-            color: #fff; 
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); 
-        }
         .logo {
             width: 120px; /* Leggermente più piccolo per adattarsi meglio */
-            margin: 0 auto;
             display: block;
             border-radius: 25%;
             box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            margin-bottom: 15px; /* Aggiunge spazio sotto il logo */
         }
+        h1 { 
+            color: #fff; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); 
+            margin-top: 0;
+            margin-bottom: 20px; /* Aggiunge spazio sotto il titolo */
+        }
+
+        /* Box con sfondo semi-trasparente per i dettagli */
+        .details-box {
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.6); /* Sfondo semi-trasparente */
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            text-align: center; /* Mantiene il testo interno centrato */
+        }
+
         button {
             border: 0;
             outline: 0;
@@ -65,13 +73,6 @@
             margin-top: 30px;
             font-size: 14px;
             color: #999;
-        }
-        .footer a {
-            color: #8A5AAB;
-            text-decoration: none;
-        }
-        .footer a:hover {
-            text-decoration: underline;
         }
         .option-container {
             padding: 15px;
@@ -106,25 +107,29 @@
     </script>
 </head>
 <body>
-    <!-- Raggruppa tutti gli elementi in un unico contenitore -->
     <div class="content-container">
+        <!-- Logo e Titolo Principale (senza sfondo) -->
         <img class="logo" src="/public/icon.png" alt="StreamViX Logo">
         <h1>StreamViX</h1>
-        <h2>A custom VixSrc extractor for Stremio</h2>
         
-        <div class="option-container">
-            <div class="checkbox-wrapper">
-                <input type="checkbox" id="showBothLinks" name="showBothLinks">
-                <label for="showBothLinks">Show Both Links (with and without proxy)</label>
+        <!-- Box con i dettagli (con sfondo semi-trasparente) -->
+        <div class="details-box">
+            <h2>A custom VixSrc extractor for Stremio</h2>
+            
+            <div class="option-container">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="showBothLinks" name="showBothLinks">
+                    <label for="showBothLinks">Show Both Links (with and without proxy)</label>
+                </div>
+                <p>Se abilitato, mostra sia i link con proxy che senza proxy, anche quando il proxy non è disponibile</p>
             </div>
-            <p>Se abilitato, mostra sia i link con proxy che senza proxy, anche quando il proxy non è disponibile</p>
-        </div>
-        
-        <button onclick="installAddon()">Aggiungi a Stremio</button>
-        <button onclick="copyManifestLink()">Copia URL Manifest</button>
-        
-        <div class="footer">
-            <p>StreamViX v1.2.0</p>
+            
+            <button onclick="installAddon()">Aggiungi a Stremio</button>
+            <button onclick="copyManifestLink()">Copia URL Manifest</button>
+            
+            <div class="footer">
+                <p>StreamViX v1.2.0</p>
+            </div>
         </div>
     </div>
 
