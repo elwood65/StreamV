@@ -297,7 +297,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       }
     }
 
-    const tmdbApiTitle: string | null = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
+    const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
 
     let finalNameForProxy: string;
 
@@ -334,7 +334,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   async function getDirectStream(): Promise<VixCloudStreamInfo | null> {
     const siteOrigin = new URL(targetUrl).origin;
     let pageHtml = "";
-    let finalReferer: string = targetUrl; // Assicurati che sia sempre string
+    let finalReferer = targetUrl; // Rimuovi il tipo esplicito string
 
     try {
       if (targetUrl.includes("/iframe")) { 
