@@ -158,54 +158,67 @@ const server = http.createServer(async (req, res) => {
         const hasMfp = !!mfpUrl && !!mfpPsw;
         const streams = [];
 
-        // **CORREZIONE 2 & 3: Logica unificata e corretta per generare i link**
+        // **CORREZIONE FINALE: Logica per i link e inversione titoli**
         for (const st of streamResults) {
-            if (!st.streamUrl) continue;
+            if (!st.streamUrl) {
+                console.log('Stream result skipped, no streamUrl');
+                continue;
+            }
 
-            const contentTitle = st.name ?? "Stream";
+            const contentTitle = st.name ?? "Stream"; // Es: "Pulp Fiction 1080p"
+            const originalUrl = st.streamUrl;
+            
+            console.log(`Processing stream: "${contentTitle}" with original URL: ${originalUrl}`);
+            console.log(`Config: showBothLinks=${showBothLinksGlobal}, hasMfp=${hasMfp}`);
+
+            const mfpProxyUrl = hasMfp 
+                ? `${mfpUrl}/proxy/hls/manifest.m3u8?${new URLSearchParams({ api_password: mfpPsw!, d: originalUrl })}`
+                : null;
 
             if (showBothLinksGlobal) {
-                // Mostra entrambi: originale + proxy
-                // Link Originale
+                // --- LINK 1: Originale (NON PROXY) ---
+                console.log(`Adding ORIGINAL link. URL: ${originalUrl}`);
                 streams.push({
-                    name: "StreamViX",
-                    title: contentTitle,
-                    url: st.streamUrl,
+                    name: contentTitle,
+                    title: "StreamViX",
+                    url: originalUrl,
                     behaviorHints: { notWebReady: true }
                 });
 
-                // Link Proxy (o placeholder se non configurato)
-                if (hasMfp) {
-                    const params = new URLSearchParams({ api_password: mfpPsw!, d: st.streamUrl });
+                // --- LINK 2: Proxy o Placeholder ---
+                if (mfpProxyUrl) {
+                    console.log(`Adding PROXY link. URL: ${mfpProxyUrl}`);
                     streams.push({
-                        name: "StreamViX (Proxy)",
-                        title: contentTitle,
-                        url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                        name: contentTitle,
+                        title: "StreamViX (Proxy)",
+                        url: mfpProxyUrl,
                         behaviorHints: { notWebReady: false }
                     });
                 } else {
+                    console.log(`Adding PROXY MISSING link. URL: ${originalUrl}`);
                     streams.push({
-                        name: "StreamViX (Proxy Mancante)",
-                        title: contentTitle,
-                        url: st.streamUrl,
+                        name: contentTitle,
+                        title: "StreamViX (Proxy Mancante)",
+                        url: originalUrl, // Fallback a originale
                         behaviorHints: { notWebReady: true }
                     });
                 }
             } else {
-                // Mostra solo un link: proxy se disponibile, altrimenti originale
-                if (hasMfp) {
-                    const params = new URLSearchParams({ api_password: mfpPsw!, d: st.streamUrl });
+                // --- Mostra solo un link ---
+                if (mfpProxyUrl) {
+                    console.log(`Adding PROXY-ONLY link. URL: ${mfpProxyUrl}`);
                     streams.push({
-                        name: "StreamViX (Proxy)",
-                        title: contentTitle,
-                        url: `${mfpUrl}/proxy/hls/manifest.m3u8?${params.toString()}`,
+                        name: contentTitle,
+                        title: "StreamViX (Proxy)",
+                        url: mfpProxyUrl,
                         behaviorHints: { notWebReady: false }
                     });
                 } else {
+                    console.log(`Adding ORIGINAL-ONLY link. URL: ${originalUrl}`);
                     streams.push({
-                        name: "StreamViX",
-                        title: contentTitle,
-                        url: st.streamUrl,
+                        name: contentTitle,
+                        title: "StreamViX",
+                        url: originalUrl,
                         behaviorHints: { notWebReady: true }
                     });
                 }
