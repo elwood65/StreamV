@@ -348,18 +348,18 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       return null;
     }
 
-    // Now TypeScript knows targetUrl is not null for the rest of the function
-    const siteOrigin = new URL(targetUrl).origin;
-    let pageHtml = "";
+    // Create a non-null local variable that TypeScript can track
+    const safeTargetUrl: string = targetUrl;
     
-    // The problem is here - targetUrl was already checked, but TypeScript still sees it as possibly null
-    // Use a type assertion to tell TypeScript that targetUrl is definitely a string at this point
-    let finalReferer = targetUrl as string;
+    // Now TypeScript knows safeTargetUrl is definitely a string
+    const siteOrigin = new URL(safeTargetUrl).origin;
+    let pageHtml = "";
+    let finalReferer: string = safeTargetUrl; // Now this is properly typed as string
 
     try {
-      if (targetUrl.includes("/iframe")) { 
+      if (safeTargetUrl.includes("/iframe")) { 
         const version = await fetchVixCloudSiteVersion(siteOrigin);
-        const initialResponse = await fetch(targetUrl, {
+        const initialResponse = await fetch(safeTargetUrl, {
           headers: { 
             "x-inertia": "true", 
             "x-inertia-version": version, 
@@ -377,7 +377,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
             headers: { 
               "x-inertia": "true", 
               "x-inertia-version": version, 
-              "Referer": targetUrl
+              "Referer": safeTargetUrl
             },
           });
           if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
@@ -387,7 +387,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           throw new Error("Iframe src not found in initial response.");
         }
       } else {
-        const response = await fetch(targetUrl); // targetUrl is already checked for null
+        const response = await fetch(safeTargetUrl); // targetUrl is already checked for null
         if (!response.ok) throw new Error(`Direct embed request failed: ${response.status}`);
         pageHtml = await response.text();
         // Non modificare finalReferer qui, rimane targetUrl
