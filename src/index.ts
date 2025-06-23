@@ -125,7 +125,8 @@ const server = http.createServer(async (req, res) => {
   
   // Gestione file statici
   if (pathname.startsWith('/public/')) {
-    const filePath = path.join(__dirname, '..', 'src', pathname);
+    // CORREZIONE: Rimuovi la barra iniziale (/) da 'pathname' per costruire il percorso corretto.
+    const filePath = path.join(__dirname, '..', 'src', pathname.substring(1));
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath);
       const ext = path.extname(filePath).toLowerCase();
