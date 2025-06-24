@@ -201,11 +201,11 @@ app.get('/', (_, res) => {
 // Middleware che crea dinamicamente l'interfaccia dell'addon per ogni richiesta
 // Questo preserva la tua logica di configurazione dinamica
 app.use((req, res) => {
-    // Stremio passa la configurazione come primo segmento del path, codificato in base64
-    const configString = req.path.split('/')[1];
-    const config = parseConfigFromArgs(configString);
-    const builder = createBuilder(config);
-    builder.getInterface()(req, res);
+  const configString = req.path.split('/')[1];
+  const config = parseConfigFromArgs(configString);
+  const builder = createBuilder(config);
+  const addonInterface = builder.getInterface();
+  addonInterface.public(req, res); // ✅ Chiama .public
 });
 
 const PORT = process.env.PORT || 7860;
