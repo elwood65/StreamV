@@ -24,7 +24,7 @@ const baseManifest: Manifest = {
     types: ["movie", "series"],
     idPrefixes: ["tt"],
     catalogs: [],
-    resources: ["stream", "landingTemplate"] as any,
+    resources: ["stream", "landingTemplate"],
     behaviorHints: {
         configurable: true
     },
@@ -186,7 +186,7 @@ function createBuilder(config: AddonConfig = {}) {
         }
     );
 
-    (builder as any).defineLandingTemplate((args: { manifest: Manifest }) => {
+    builder.defineLandingTemplate((args: { manifest: Manifest }) => {
         const manifest = args.manifest;
         const landingHTML = landingTemplate(manifest);
         return Promise.resolve(landingHTML);
