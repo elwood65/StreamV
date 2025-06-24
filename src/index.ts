@@ -1,76 +1,204 @@
-#!/usr/bin/env node
+import { addonBuilder, Manifest, Stream } from "stremio-addon-sdk";
+import { getStreamContent, VixCloudStreamInfo } from "./extractor";
+import * as fs from 'fs';
+import * as path from 'path';
 
-import dotenv from 'dotenv';
-dotenv.config(); 
+// Interfaccia per la configurazione URL
+interface AddonConfig {
+  mediaFlowProxyUrl?: string;
+  mediaFlowProxyPassword?: string;
+  tmdbApiKey?: string;
+  bothLinks?: string;
+  [key: string]: any;
+}
 
-import express from 'express';
-import { publishToCentral } from 'stremio-addon-sdk';
-import addonInterface, { createConfiguredAddon } from './addon';
+// Base manifest configuration
+const baseManifest: Manifest = {
+    id: "org.stremio.vixcloud",
+    version: "1.0.1",
+    name: "StreamViX",
+    description: "Addon for Vixsrc streams.", 
+    icon: "/public/icon.png",
+    background: "/public/backround.png",
+    types: ["movie", "series"],
+    idPrefixes: ["tt"],
+    catalogs: [],
+    resources: ["stream"],
+    behaviorHints: {
+        configurable: true
+    },
+    config: [
+        {
+            key: "tmdbApiKey",
+            title: "TMDB API Key",
+            type: "password",
+            required: true
+        },
+        {
+            key: "mediaFlowProxyUrl", 
+            title: "MediaFlow Proxy URL (Optional)",
+            type: "text",
+            required: false
+        },
+        {
+            key: "mediaFlowProxyPassword",
+            title: "MediaFlow Proxy Password (Optional)", 
+            type: "password",
+            required: false
+        },
+        {
+            key: "bothLinks",
+            title: "Show Both Links (Proxy and Direct)",
+            type: "checkbox",
+            required: false
+        }
+    ]
+};
 
-const app = express();
-const port = parseInt(process.env.PORT || '7860', 10);
-
-// Middleware per servire file statici
-app.use('/public', express.static('public'));
-
-// Rotta per l'addon senza configurazione
-app.get('/manifest.json', (req, res) => {
-    res.json(addonInterface.manifest);
-});
-
-app.get('/stream/:type/:id.json', async (req, res) => {
+// Load custom configuration if available
+function loadCustomConfig(): Manifest {
     try {
-        const result = await addonInterface.get(req);
-        res.json(result);
-    } catch (error) {
-        console.error('Stream error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Rotte per l'addon con configurazione dinamica
-app.get('/:config/manifest.json', (req, res) => {
-    try {
-        const configuredAddon = createConfiguredAddon(req.params.config);
-        res.json(configuredAddon.getInterface().manifest);
-    } catch (error) {
-        console.error('Config error:', error);
-        res.status(500).json({ error: 'Invalid configuration' });
-    }
-});
-
-app.get('/:config/stream/:type/:id.json', async (req, res) => {
-    try {
-        const configuredAddon = createConfiguredAddon(req.params.config);
-        const result = await configuredAddon.getInterface().get(req);
-        res.json(result);
-    } catch (error) {
-        console.error('Configured stream error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Rotta per la landing page
-app.get('/', async (req, res) => {
-    try {
-        const result = await addonInterface.get({ url: req.url, headers: req.headers });
-        if (typeof result === 'string') {
-            res.send(result); // HTML della landing page
-        } else {
-            res.json(result); // JSON response
+        const configPath = path.join(__dirname, '..', 'addon-config.json');
+        
+        if (fs.existsSync(configPath)) {
+            const customConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            
+            return {
+                ...baseManifest,
+                id: customConfig.addonId || baseManifest.id,
+                name: customConfig.addonName || baseManifest.name,
+                description: customConfig.addonDescription || baseManifest.description,
+                version: customConfig.addonVersion || baseManifest.version,
+                logo: customConfig.addonLogo || baseManifest.logo,
+                icon: customConfig.addonLogo || baseManifest.icon,
+                background: baseManifest.background
+            };
         }
     } catch (error) {
-        console.error('Landing page error:', error);
-        res.status(500).send('Error loading landing page');
+        console.error('Error loading custom configuration:', error);
     }
-});
+    
+    return baseManifest;
+}
 
-app.listen(port, () => {
-    console.log(`Addon server running on port ${port}`);
-    console.log(`Manifest available at http://localhost:${port}/manifest.json`);
-    console.log(`Landing page will be generated automatically by stremio-addon-sdk`);
-});
+// Funzione per parsare la configurazione dall'URL
+function parseConfigFromArgs(args: any): AddonConfig {
+    const config: AddonConfig = {};
+    
+    // Se args è una stringa, prova a decodificarla come JSON
+    if (typeof args === 'string') {
+        try {
+            const decoded = decodeURIComponent(args);
+            const parsed = JSON.parse(decoded);
+            return parsed;
+        } catch (error) {
+            console.error('Error parsing config from URL:', error);
+            return {};
+        }
+    }
+    
+    // Se args è già un oggetto, usalo direttamente
+    if (typeof args === 'object' && args !== null) {
+        return args;
+    }
+    
+    return config;
+}
 
-// when you've deployed your addon, un-comment this line
-// publishToCentral("https://my-addon.awesome/manifest.json")
-// for more information on deploying, see: https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/deploying/README.md
+// Funzione per creare il builder con configurazione dinamica
+function createBuilder(config: AddonConfig = {}) {
+    // Use the configured manifest
+    const manifest = loadCustomConfig();
+    
+    // Modifica il manifest in base alla configurazione
+    if (config.mediaFlowProxyUrl || config.bothLinks || config.tmdbApiKey) {
+        manifest.name += ' (Configured)';
+    }
+    
+    const builder = new addonBuilder(manifest);
+
+    builder.defineStreamHandler(
+        async ({
+            id,
+            type,
+        }): Promise<{
+            streams: Stream[];
+        }> => {
+            try {
+                // Salva le variabili d'ambiente originali
+                const originalMfpUrl = process.env.MFP_URL;
+                const originalMfpPsw = process.env.MFP_PSW;
+                const originalBothLink = process.env.BOTHLINK;
+                const originalTmdbKey = process.env.TMDB_API_KEY;
+                
+                // Override delle variabili d'ambiente con i valori dalla configurazione URL
+                if (config.mediaFlowProxyUrl) {
+                    process.env.MFP_URL = config.mediaFlowProxyUrl;
+                }
+                if (config.mediaFlowProxyPassword) {
+                    process.env.MFP_PSW = config.mediaFlowProxyPassword;
+                }
+                if (config.tmdbApiKey) {
+                    process.env.TMDB_API_KEY = config.tmdbApiKey;
+                }
+                // Il valore di una checkbox dal form è 'on' se spuntata.
+                // Lo convertiamo in una stringa 'true' o 'false'.
+                if (config.bothLinks) {
+                    process.env.BOTHLINK = config.bothLinks === 'on' ? 'true' : 'false';
+                }
+                
+                const res: VixCloudStreamInfo[] | null = await getStreamContent(id, type);
+
+                // Ripristina le variabili d'ambiente originali
+                process.env.MFP_URL = originalMfpUrl;
+                process.env.MFP_PSW = originalMfpPsw;
+                process.env.BOTHLINK = originalBothLink;
+                process.env.TMDB_API_KEY = originalTmdbKey;
+
+                if (!res) {
+                    return { streams: [] };
+                }
+
+                let streams: Stream[] = [];
+                for (const st of res) {
+                    if (st.streamUrl == null) continue;
+                    
+                    console.log(`Adding stream with title: "${st.name}"`);
+
+                    const streamName = st.source === 'proxy' ? 'StreamViX (Proxy)' : 'StreamViX';
+                    
+                    streams.push({
+                        title: st.name,
+                        name: streamName,
+                        url: st.streamUrl,
+                        behaviorHints: {
+                            notWebReady: true,
+                        },
+                        proxyHeaders: { "request": { "Referer": st.referer } }
+                    } as Stream);
+                }
+                return { streams: streams };
+            } catch (error) {
+                console.error('Stream extraction failed:', error);
+                return { streams: [] };
+            }
+        }
+    );
+
+    return builder;
+}
+
+// Export per l'uso normale (senza configurazione)
+export const addon = createBuilder();
+export default addon.getInterface();
+
+// Export per l'uso con configurazione dinamica
+export function createConfiguredAddon(configString: string) {
+    const config = parseConfigFromArgs(configString);
+    console.log('Creating addon with config:', {
+        ...config,
+        tmdbApiKey: config.tmdbApiKey ? '[PROVIDED]' : '[NOT PROVIDED]',
+        mediaFlowProxyPassword: config.mediaFlowProxyPassword ? '[PROVIDED]' : '[NOT PROVIDED]'
+    });
+    return createBuilder(config);
+}
