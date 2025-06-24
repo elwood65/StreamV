@@ -111,7 +111,7 @@ function createBuilder(config: AddonConfig = {}) {
     const manifest = loadCustomConfig();
     
     // Modifica il manifest in base alla configurazione
-    if (config.mediaFlowProxyUrl || config.bothLinks === 'true' || config.tmdbApiKey) {
+    if (config.mediaFlowProxyUrl || config.bothLinks || config.tmdbApiKey) {
         manifest.name += ' (Configured)';
     }
     
@@ -134,28 +134,26 @@ function createBuilder(config: AddonConfig = {}) {
                 // Override delle variabili d'ambiente con i valori dalla configurazione URL
                 if (config.mediaFlowProxyUrl) {
                     process.env.MFP_URL = config.mediaFlowProxyUrl;
-                    console.log(`Using MFP_URL from config: ${config.mediaFlowProxyUrl}`);
                 }
                 if (config.mediaFlowProxyPassword) {
                     process.env.MFP_PSW = config.mediaFlowProxyPassword;
-                    console.log('Using MFP_PSW from config');
                 }
                 if (config.tmdbApiKey) {
                     process.env.TMDB_API_KEY = config.tmdbApiKey;
-                    console.log('Using TMDB_API_KEY from config');
                 }
+                // Il valore di una checkbox dal form è 'on' se spuntata.
+                // Lo convertiamo in una stringa 'true' o 'false'.
                 if (config.bothLinks) {
                     process.env.BOTHLINK = config.bothLinks === 'on' ? 'true' : 'false';
-                    console.log(`Using BOTHLINK from config: ${config.bothLinks}`);
                 }
                 
                 const res: VixCloudStreamInfo[] | null = await getStreamContent(id, type);
 
                 // Ripristina le variabili d'ambiente originali
-                if (originalMfpUrl !== undefined) process.env.MFP_URL = originalMfpUrl;
-                if (originalMfpPsw !== undefined) process.env.MFP_PSW = originalMfpPsw;
-                if (originalBothLink !== undefined) process.env.BOTHLINK = originalBothLink;
-                if (originalTmdbKey !== undefined) process.env.TMDB_API_KEY = originalTmdbKey;
+                process.env.MFP_URL = originalMfpUrl;
+                process.env.MFP_PSW = originalMfpPsw;
+                process.env.BOTHLINK = originalBothLink;
+                process.env.TMDB_API_KEY = originalTmdbKey;
 
                 if (!res) {
                     return { streams: [] };
