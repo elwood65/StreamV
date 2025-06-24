@@ -237,33 +237,6 @@ function landingTemplate(manifest: any) {
 			}
 			mainForm.onchange = updateLink
 			`
-		// Aggiungi qui la logica per il pulsante "Copia Manifest URL"
-		script += `
-            const copyManifestLink = document.getElementById('copyManifestLink');
-            if (copyManifestLink) {
-                copyManifestLink.onclick = async () => {
-                    let manifestUrl;
-                    // Se il form esiste (quindi ci sono opzioni configurabili), usa la configurazione dal form
-                    if (typeof mainForm !== 'undefined') {
-                        const config = Object.fromEntries(new FormData(mainForm));
-                        manifestUrl = window.location.protocol + '//' + window.location.host + '/' + encodeURIComponent(JSON.stringify(config)) + '/manifest.json';
-                    } else {
-                        // Altrimenti, usa l'URL del manifest statico
-                        manifestUrl = window.location.protocol + '//' + window.location.host + '/manifest.json';
-                    }
-                    
-                    try {
-                        await navigator.clipboard.writeText(manifestUrl);
-                        const originalText = copyManifestLink.textContent;
-                        copyManifestLink.textContent = 'Copiato!';
-                        setTimeout(() => { copyManifestLink.textContent = originalText; }, 2000);
-                    } catch (err) {
-                        console.error('Errore durante la copia dell\'URL del manifest: ', err);
-                        alert('Impossibile copiare l\'URL del manifest. Copialo manualmente: ' + manifestUrl);
-                    }
-                };
-            }
-        `;			
 		}
 	}
 
@@ -303,6 +276,7 @@ function landingTemplate(manifest: any) {
 			<a id="installLink" class="install-link" href="#">
 			<button name="Install">INSTALL</button>
 			</a>
+            <button id="copyManifestLink" style="margin-top: 1vh;">COPIA MANIFEST URL</button>
 			${contactHTML}
 		</div>
 		<script>
