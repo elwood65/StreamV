@@ -5,6 +5,7 @@ dotenv.config();
 
 import express from 'express';
 import addonInterface, { createConfiguredAddon } from './addon';
+import { ContentType } from 'stremio-addon-sdk'; // Aggiungi questa importazione
 
 const app = express();
 const port = parseInt(process.env.PORT || '7860', 10);
@@ -14,7 +15,12 @@ app.use('/public', express.static('public'));
 
 const serveLandingPage = async (req: express.Request, res: express.Response) => {
     try {
-        const landingHTML = await addonInterface.get({ resource: 'manifest' });
+        // Usa un cast esplicito per aggirare il controllo di tipo
+        const landingHTML = await addonInterface.get({ 
+            resource: 'landingTemplate' as any,
+            type: 'movie' as ContentType, 
+            id: 'landing'
+        });
         res.setHeader('Content-Type', 'text/html');
         res.send(landingHTML);
     } catch (error) {
@@ -42,7 +48,12 @@ app.get('/manifest.json', async (req, res) => {
 app.get('/stream/:type/:id.json', async (req, res) => {
     try {
         const { type, id } = req.params;
-        const result = await addonInterface.get({ resource: 'stream', type, id });
+        // Cast esplicito di type a ContentType
+        const result = await addonInterface.get({ 
+            resource: 'stream', 
+            type: type as ContentType, 
+            id 
+        });
         res.json(result);
     } catch (error) {
         console.error('Stream error:', error);
@@ -69,7 +80,12 @@ app.get('/:config/stream/:type/:id.json', async (req, res) => {
     try {
         const { config, type, id } = req.params;
         const configuredAddon = createConfiguredAddon(config);
-        const result = await configuredAddon.getInterface().get({ resource: 'stream', type, id });
+        // Cast esplicito di type a ContentType
+        const result = await configuredAddon.getInterface().get({ 
+            resource: 'stream', 
+            type: type as ContentType, 
+            id 
+        });
         res.json(result);
     } catch (error) {
         console.error('Configured stream error:', error);
