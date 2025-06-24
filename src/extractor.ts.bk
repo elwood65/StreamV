@@ -11,11 +11,8 @@ const TMDB_API_BASE_URL = "https://api.themoviedb.org/3";
 // --- Proxy Configuration ---
 const MFP_URL = process.env.MFP_URL; // Proxy URL
 const MFP_PSW = process.env.MFP_PSW; // Proxy Password
-// --- BOTHLINK Configuration ---
-const BOTHLINK = process.env.BOTHLINK?.toLowerCase() === 'true'; // Mostra entrambi i link se true
 console.log("MFP_URL from env:", MFP_URL);
 console.log("MFP_PSW from env:", MFP_PSW);
-console.log("BOTHLINK from env:", BOTHLINK);
 
 // --- End Configuration ---
 
@@ -60,7 +57,7 @@ async function fetchVixCloudSiteVersion(siteOrigin: string): Promise<string> {
     if (error instanceof Error) {
       message = error.message;
     }
-    console.error("Error fetching VixCloud site version:", message, error);
+    console.error("Error fetching VixCloud site version:", message, error); // Logga il messaggio e l'errore originale
     throw new Error(`Failed to get VixCloud site version: ${message}`);
   }
 }
@@ -208,34 +205,10 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     }
   }
 
-  // Funzione per ottenere il proxy stream
-  async function getProxyStream(url: string): Promise<VixCloudStreamInfo | null> {
-    if (!MFP_URL || !MFP_PSW) {
-      // Se BOTHLINK è true ma manca il proxy, restituisci un placeholder
-      if (BOTHLINK) {
-        const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
-        let fallbackName = 'Proxy Missing';
-        
-        if (tmdbApiTitle) {
-          fallbackName = tmdbApiTitle;
-          if (type !== 'movie') {
-            const obj = getObject(id);
-            fallbackName += ` (S${obj.season}E${obj.episode})`;
-          }
-          fallbackName += ' (Proxy Missing)';
-        }
-        
-        return {
-          name: fallbackName,
-          streamUrl: '', // URL vuoto per indicare che il proxy manca
-          referer: url,
-          source: 'proxy'
-        };
-      }
-      return null;
-    }
-
-    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(url)}`;
+  // --- Check if Proxy is Configured ---
+  if (MFP_URL && MFP_PSW) {
+    // --- Proxy Mode ---
+    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(targetUrl)}`;
     console.log(`Proxy mode active. Generated proxy URL for ${id}: ${proxyStreamUrl}`);
 
     // Nuova funzione asincrona per ottenere l'URL m3u8 finale
@@ -264,9 +237,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           if (data.query_params) {
             const params = new URLSearchParams();
             for (const [key, value] of Object.entries(data.query_params)) {
-              if (value !== null) {
-                params.append(key, String(value));
-              }
+              params.append(key, value as string);
             }
             
             // Se l'URL ha già parametri, aggiungi & altrimenti ?
@@ -282,10 +253,8 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
           // Aggiungi gli header come parametri h_
           if (data.request_headers) {
             for (const [key, value] of Object.entries(data.request_headers)) {
-              if (value !== null) {
-                const headerParam = `h_${key}=${encodeURIComponent(String(value))}`;
-                finalUrl += '&' + headerParam;
-              }
+              const headerParam = `h_${key}=${encodeURIComponent(value as string)}`;
+              finalUrl += '&' + headerParam;
             }
           }
           
@@ -301,18 +270,16 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       }
     }
 
-    // Ottieni il titolo dalla TMDB API
-    const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
+    const tmdbApiTitle: string | null = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
 
-    // Determina il nome finale per il proxy stream
     let finalNameForProxy: string;
+
     if (tmdbApiTitle) { // Titolo TMDB trovato
       finalNameForProxy = tmdbApiTitle;
       if (type !== 'movie') { // È una serie, aggiungi Stagione/Episodio
         const obj = getObject(id);
         finalNameForProxy += ` (S${obj.season}E${obj.episode})`;
       }
-      finalNameForProxy += ' (Proxy)'; // Aggiungi sempre (Proxy)
     } else { // Titolo TMDB non trovato, usa il fallback
       if (type === 'movie') {
         finalNameForProxy = 'Movie Stream (Proxy)';
@@ -322,188 +289,142 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
         finalNameForProxy = `Series Stream (Proxy) (S${obj.season}E${obj.episode})`;
       }
     }
-    
     // Ottieni l'URL m3u8 finale
     const finalStreamUrl = await getActualStreamUrl(proxyStreamUrl);
     console.log(`Final m3u8 URL: ${finalStreamUrl}`);
     
-    return { 
-      name: finalNameForProxy, 
-      streamUrl: finalStreamUrl, 
-      referer: url, 
-      source: 'proxy' 
-    };
+    return [{ name: finalNameForProxy, streamUrl: finalStreamUrl, referer: targetUrl, source: 'proxy' }];
   }
 
-  // Funzione per ottenere il direct stream
-  async function getDirectStream(url: string): Promise<VixCloudStreamInfo | null> {
-    // The 'url' parameter is guaranteed to be a string, so no more null checks needed here.
-    const siteOrigin = new URL(url).origin;
-    let pageHtml = "";
-    let finalReferer: string = url;
+  // --- Direct Extraction Mode (if proxy not configured) ---
+  const siteOrigin = new URL(targetUrl).origin;
+  let pageHtml = "";
+  let finalReferer = targetUrl;
 
-    try {
-      if (url.includes("/iframe")) { 
-        const version = await fetchVixCloudSiteVersion(siteOrigin);
-        const initialResponse = await fetch(url, {
-          headers: { 
-            "x-inertia": "true", 
-            "x-inertia-version": version, 
-            "Referer": `${siteOrigin}/`
-          },
+  try {
+    if (targetUrl.includes("/iframe")) { 
+      const version = await fetchVixCloudSiteVersion(siteOrigin);
+      const initialResponse = await fetch(targetUrl, {
+        headers: { "x-inertia": "true", "x-inertia-version": version, "Referer": `${siteOrigin}/` },
+      });
+      if (!initialResponse.ok) throw new Error(`Initial iframe request failed: ${initialResponse.status}`);
+      const initialHtml = await initialResponse.text();
+      const $initial = cheerio.load(initialHtml);
+      const iframeSrc = $initial("iframe").attr("src");
+
+      if (iframeSrc) {
+        const actualPlayerUrl = new URL(iframeSrc, siteOrigin).toString();
+        const playerResponse = await fetch(actualPlayerUrl, {
+          headers: { "x-inertia": "true", "x-inertia-version": version, "Referer": targetUrl },
         });
-        if (!initialResponse.ok) throw new Error(`Initial iframe request failed: ${initialResponse.status}`);
-        const initialHtml = await initialResponse.text();
-        const $initial = cheerio.load(initialHtml);
-        const iframeSrc = $initial("iframe").attr("src");
-
-        if (iframeSrc) {
-          const actualPlayerUrl = new URL(iframeSrc, siteOrigin).toString();
-          const playerResponse = await fetch(actualPlayerUrl, {
-            headers: { 
-              "x-inertia": "true", 
-              "x-inertia-version": version, 
-              "Referer": url
-            },
-          });
-          if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
-          pageHtml = await playerResponse.text();
-          finalReferer = actualPlayerUrl; // Now we can modify finalReferer
-        } else {
-          throw new Error("Iframe src not found in initial response.");
-        }
+        if (!playerResponse.ok) throw new Error(`Player iframe request failed: ${playerResponse.status}`);
+        pageHtml = await playerResponse.text();
+        finalReferer = actualPlayerUrl;
       } else {
-        const response = await fetch(url); 
-        if (!response.ok) throw new Error(`Direct embed request failed: ${response.status}`);
-        pageHtml = await response.text();
-        // Non modificare finalReferer qui, rimane targetUrl
+        throw new Error("Iframe src not found in initial response.");
       }
+    } else { 
+      const response = await fetch(targetUrl);
+      if (!response.ok) throw new Error(`Direct embed request failed: ${response.status}`);
+      pageHtml = await response.text();
+    }
 
-      const $ = cheerio.load(pageHtml);
-      const scriptTag = $("body script").filter((_, el) => {
-        const htmlContent = $(el).html();
-        return !!htmlContent && htmlContent.includes("'token':") && htmlContent.includes("'expires':");
-      }).first();
-      const scriptContent = scriptTag.html() || '';
+    const $ = cheerio.load(pageHtml);
+    const scriptTag = $("body script").filter((_, el) => {
+      const htmlContent = $(el).html();
+      return !!htmlContent && htmlContent.includes("'token':") && htmlContent.includes("'expires':");
+    }).first();
+    const scriptContent = scriptTag.html();
 
-      if (!scriptContent) throw new Error("Player script with token/expires not found.");
+    if (!scriptContent) throw new Error("Player script with token/expires not found.");
 
-      const tokenMatch = scriptContent.match(/'token':\s*'(\w+)'/);
-      const expiresMatch = scriptContent.match(/'expires':\s*'(\d+)'/);
-      const serverUrlMatch = scriptContent.match(/url:\s*'([^']+)'/);
+    const tokenMatch = scriptContent.match(/'token':\s*'(\w+)'/);
+    const expiresMatch = scriptContent.match(/'expires':\s*'(\d+)'/);
+    const serverUrlMatch = scriptContent.match(/url:\s*'([^']+)'/);
 
-      if (!tokenMatch || !expiresMatch || !serverUrlMatch) {
-        throw new Error("Failed to extract token, expires, or server URL from script.");
-      }
+    if (!tokenMatch || !expiresMatch || !serverUrlMatch) {
+      throw new Error("Failed to extract token, expires, or server URL from script.");
+    }
 
-      const token = tokenMatch[1];
-      const expires = expiresMatch[1];
-      let serverUrl = serverUrlMatch[1];
+    const token = tokenMatch[1];
+    const expires = expiresMatch[1];
+    let serverUrl = serverUrlMatch[1];
 
-      let finalStreamUrl = serverUrl.includes("?b=1")
-        ? `${serverUrl}&token=${token}&expires=${expires}`
-        : `${serverUrl}?token=${token}&expires=${expires}`;
+    let finalStreamUrl = serverUrl.includes("?b=1")
+      ? `${serverUrl}&token=${token}&expires=${expires}`
+      : `${serverUrl}?token=${token}&expires=${expires}`;
 
-      // Aggiungi &h=1 solo se disponibile
-      if (scriptContent.includes("window.canPlayFHD = true")) {
-        finalStreamUrl += "&h=1";
-      } 
+    // Aggiungi &h=1 solo se disponibile
+    if (scriptContent.includes("window.canPlayFHD = true")) {
+      finalStreamUrl += "&h=1";
+    } 
 
-      // --- Inizio della nuova logica per il titolo ---
+    // --- Inizio della nuova logica per il titolo ---
 
-      // 1. Ottieni il titolo di base, dando priorità a TMDB
-      let baseTitle: string | null = null;
+    // 1. Ottieni il titolo di base, dando priorità a TMDB
+    let baseTitle: string | null = null;
 
-      // Prima prova a ottenere il titolo dalle API TMDB
-      baseTitle = type === 'movie' ? 
-        await getMovieTitle(id) : 
-        await getSeriesTitle(id);
-      
-      console.log(`TMDB title result: "${baseTitle}"`);
+    // Prima prova a ottenere il titolo dalle API TMDB
+    baseTitle = type === 'movie' ? 
+      await getMovieTitle(id) : 
+      await getSeriesTitle(id);
     
-      // Solo se TMDB fallisce, prova a usare il titolo dalla pagina
-      if (!baseTitle) {
-        const pageTitle = $("title").text().trim();
-        // Pulisci ulteriormente il titolo rimuovendo parti comuni nei siti di streaming
-        if (pageTitle) {
-          baseTitle = pageTitle
-            .replace(" - VixSrc", "")
-            .replace(" - Guarda Online", "")
-            .replace(" - Streaming", "")
-            .replace(/\s*\|\s*.*$/, ""); // Rimuove qualsiasi cosa dopo il simbolo |
-        }
-        console.log(`Page title after cleanup: "${baseTitle}"`);
-      }
-
-      // 2. Determina il nome finale, gestendo esplicitamente il caso null
-      let determinedName: string;
+    console.log(`TMDB title result: "${baseTitle}"`);
+  
+    // Solo se TMDB fallisce, prova a usare il titolo dalla pagina
+    if (!baseTitle) {
+      baseTitle = $("title").text().trim();
+      // Pulisci ulteriormente il titolo rimuovendo parti comuni nei siti di streaming
       if (baseTitle) {
-        // Se abbiamo un titolo, ora siamo sicuri che sia una stringa.
-        if (type === 'movie') {
-          determinedName = baseTitle;
-        } else { // È una serie, aggiungi info S/E
-          const obj = getObject(id);
-          determinedName = `${baseTitle} (S${obj.season}E${obj.episode})`;
-        }
-      } else {
-        // Se non abbiamo un titolo (baseTitle è null), usiamo un nome di fallback.
-        if (type === 'movie') {
-          determinedName = 'Movie Stream (Direct)';
-        } else { // È una serie
-          const obj = getObject(id);
-          // Per richiesta utente, anche i titoli di fallback delle serie dovrebbero avere S/E
-          determinedName = `Series Stream (Direct) (S${obj.season}E${obj.episode})`;
-        }
+        baseTitle = baseTitle
+          .replace(" - VixSrc", "")
+          .replace(" - Guarda Online", "")
+          .replace(" - Streaming", "")
+          .replace(/\s*\|\s*.*$/, ""); // Rimuove qualsiasi cosa dopo il simbolo |
       }
-      
-      console.log(`Final stream name: "${determinedName}"`);
-      console.log(`Final stream URL: "${finalStreamUrl}"`); // Aggiungi questo log per l'URL
-
-      return {
-        name: determinedName,
-        streamUrl: finalStreamUrl,
-        referer: finalReferer,
-        source: 'direct'
-      };
-
-    } catch (error) {
-      let message = "Unknown error during stream content extraction";
-      if (error instanceof Error) {
-        message = error.message;
-      }
-      console.error(`Stream extraction error: ${message}`, error);
-      
-      // Ritorna null invece di un oggetto con URL HTML
-      return null;
+      console.log(`Page title after cleanup: "${baseTitle}"`);
     }
-  }
 
-  // --- Logica principale basata su BOTHLINK ---
-  const results: VixCloudStreamInfo[] = [];
-
-  if (BOTHLINK) {
-    // Se BOTHLINK è true, ottieni entrambi i stream
-    console.log('BOTHLINK mode: fetching both proxy and direct streams');
-    
-    const proxyStream = await getProxyStream(targetUrl);
-    const directStream = await getDirectStream(targetUrl);
-    
-    if (proxyStream) results.push(proxyStream);
-    if (directStream) results.push(directStream);
-    
-    return results.length > 0 ? results : null;
-  } else {
-    // Logica originale: proxy se configurato, altrimenti direct
-    if (MFP_URL && MFP_PSW) {
-      // --- Proxy Mode ---
-      const proxyStream = await getProxyStream(targetUrl);
-      return proxyStream ? [proxyStream] : null;
+    // 2. Determina il nome finale, gestendo esplicitamente il caso null
+    let determinedName: string;
+    if (baseTitle) {
+      // Se abbiamo un titolo, ora siamo sicuri che sia una stringa.
+      if (type === 'movie') {
+        determinedName = baseTitle;
+      } else { // È una serie, aggiungi info S/E
+        const obj = getObject(id);
+        determinedName = `${baseTitle} (S${obj.season}E${obj.episode})`;
+      }
     } else {
-      // --- Direct Extraction Mode (if proxy not configured) ---
-      const directStream = await getDirectStream(targetUrl);
-      return directStream ? [directStream] : null;
+      // Se non abbiamo un titolo (baseTitle è null), usiamo un nome di fallback.
+      if (type === 'movie') {
+        determinedName = 'Movie Stream (Direct)';
+      } else { // È una serie
+        const obj = getObject(id);
+        // Per richiesta utente, anche i titoli di fallback delle serie dovrebbero avere S/E
+        determinedName = `Series Stream (Direct) (S${obj.season}E${obj.episode})`;
+      }
     }
+    
+    console.log(`Final stream name: "${determinedName}"`);
+    console.log(`Final stream URL: "${finalStreamUrl}"`); // Aggiungi questo log per l'URL
+
+    return [{
+      name: determinedName,
+      streamUrl: finalStreamUrl,
+      referer: finalReferer,
+      source: 'direct'
+    }];
+
+  } catch (error) {
+    let message = "Unknown error during stream content extraction";
+    if (error instanceof Error) {
+      message = error.message;
+    }
+    console.error(`Stream extraction error: ${message}`, error);
+    
+    // Ritorna null invece di un oggetto con URL HTML
+    return null;
   }
 }
-
 export { getStreamContent };
