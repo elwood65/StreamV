@@ -46,6 +46,7 @@ Questo metodo ti permette di avere la tua istanza personale dell'addon online, g
         * `Name: TMDB_API_KEY` -> `Value: la_tua_chiave_api_di_tmdb`
         * `Name: MFP_URL` -> `Value: l_url_della_tua_istanza_mfp` (es. `https://username-mfp.hf.space`, **senza la `/` finale**)
         * `Name: MFP_PSW` -> `Value: la_password_che_hai_impostato_per_mfp`
+        * `name: BOTHLINK ` -> `Value: "false"   true o false (mostra entrambi i link MFP e DIRECT)`    
 
 3.  **Configura il Dockerfile 📝**
     * Torna alla scheda `Files` del tuo Space.
@@ -112,6 +113,7 @@ TMDB_API_KEY="la_tua_chiave_api_di_tmdb"
 MFP_URL="https://username-mfp.hf.space"
 MFP_PSW="la_tua_password_mfp"
 PORT="portacustom"
+BOTHLINK="false"
 ```
 #### Esegui Docker Compose
 
@@ -128,7 +130,7 @@ Usa questo metodo se vuoi modificare il codice sorgente, testare nuove funzional
 1.  **Clona il repository:**
 
     ```bash
-    git clone [https://github.com/emaschi5/vix.git](https://github.com/emaschi5/vix.git) # Assicurati che sia il repository corretto di StreamViX
+    git clone [https://github.com/qwertyuiop8899/StreamV.git](https://github.com/qwertyuiop8899/StreamV.git) # Assicurati che sia il repository corretto di StreamViX
     cd vix # Entra nella directory del progetto appena clonata
     ```
 
