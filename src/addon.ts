@@ -24,7 +24,7 @@ const baseManifest: Manifest = {
     types: ["movie", "series"],
     idPrefixes: ["tt"],
     catalogs: [],
-    resources: ["stream", "landingTemplate"] as any,
+    resources: ["stream", "landingTemplate"],
     behaviorHints: {
         configurable: true
     },
@@ -33,25 +33,25 @@ const baseManifest: Manifest = {
             key: "tmdbApiKey",
             title: "TMDB API Key",
             type: "password",
-            required: false
+            required: "true" // Modificato a stringa
         },
         {
             key: "mediaFlowProxyUrl", 
             title: "MediaFlow Proxy URL (Optional)",
             type: "text",
-            required: false
+            required: "false" // Modificato a stringa
         },
         {
             key: "mediaFlowProxyPassword",
             title: "MediaFlow Proxy Password (Optional)", 
             type: "password",
-            required: false
+            required: "false" // Modificato a stringa
         },
         {
             key: "bothLinks",
             title: "Show Both Links (Proxy and Direct)",
             type: "checkbox",
-            required: false
+            required: "false" // Modificato a stringa
         }
     ]
 };
@@ -179,7 +179,7 @@ function createBuilder(config: AddonConfig = {}) {
         }
     );
 
-    builder.defineLandingTemplate((args: { manifest: Manifest }) => {
+    (builder as any).defineLandingTemplate((args: { manifest: Manifest }) => {
         const manifest = args.manifest;
         const landingHTML = landingTemplate(manifest);
         return Promise.resolve(landingHTML);
