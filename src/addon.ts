@@ -1,5 +1,5 @@
 import { addonBuilder, getRouter, Manifest, Stream } from "stremio-addon-sdk";
-import { getStreamContent, VixCloudStreamInfo } from "./extractor";
+import { getStreamContent, VixCloudStreamInfo, ExtractorConfig } from "./extractor";
 import * as fs from 'fs';
 import { landingTemplate } from './landingPage';
 import * as path from 'path';
@@ -118,38 +118,35 @@ function createBuilder(config: AddonConfig = {}) {
         async ({
             id,
             type,
-        }): Promise<{
+        }): Promise<{ // Il gestore ha accesso a `config` dallo scope padre
             streams: Stream[];
         }> => {
-            // Salva le variabili d'ambiente originali
-            const originalMfpUrl = process.env.MFP_URL;
-            const originalMfpPsw = process.env.MFP_PSW;
-            const originalBothLink = process.env.BOTHLINK;
-            const originalTmdbKey = process.env.TMDB_API_KEY;
-
             try {
-                // Override delle variabili d'ambiente con i valori dalla configurazione URL
-                if (config.mediaFlowProxyUrl) {
-                    process.env.MFP_URL = config.mediaFlowProxyUrl;
+                // Priorità: Configurazione utente (URL) > Variabili d'ambiente (.env/secrets)
+                let bothLinkValue: boolean;
+                // Se la config dall'URL contiene 'bothLinks', essa ha la precedenza assoluta.
+                // Un checkbox non spuntato non viene incluso nel FormData, quindi `config.bothLinks` sarà undefined.
+                if (config.bothLinks !== undefined) {
+                    bothLinkValue = config.bothLinks === 'on';
+                } else {
+                    // Altrimenti, usa la variabile d'ambiente come fallback.
+                    bothLinkValue = process.env.BOTHLINK?.toLowerCase() === 'true';
                 }
-                if (config.mediaFlowProxyPassword) {
-                    process.env.MFP_PSW = config.mediaFlowProxyPassword;
-                }
-                if (config.tmdbApiKey) {
-                    process.env.TMDB_API_KEY = config.tmdbApiKey;
-                }
-                // Il valore di una checkbox dal form è 'on' se spuntata.
-                // Lo convertiamo in una stringa 'true' o 'false'.
-                if (config.bothLinks) {
-                    process.env.BOTHLINK = config.bothLinks === 'on' ? 'true' : 'false';
-                }
-                const res: VixCloudStreamInfo[] | null = await getStreamContent(id, type);
+
+                const finalConfig: ExtractorConfig = {
+                    tmdbApiKey: config.tmdbApiKey || process.env.TMDB_API_KEY,
+                    mfpUrl: config.mediaFlowProxyUrl || process.env.MFP_URL,
+                    mfpPsw: config.mediaFlowProxyPassword || process.env.MFP_PSW,
+                    bothLink: bothLinkValue
+                };
+
+                const res: VixCloudStreamInfo[] | null = await getStreamContent(id, type, finalConfig);
 
                 if (!res) {
                     return { streams: [] };
                 }
 
-                let streams: Stream[] = [];
+                const streams: Stream[] = [];
                 for (const st of res) {
                     if (st.streamUrl == null) continue;
                     
@@ -164,10 +161,10 @@ function createBuilder(config: AddonConfig = {}) {
                         behaviorHints: {
                             notWebReady: true,
                         },
-                        proxyHeaders: { "request": { "Referer": st.referer } }
-                    } as Stream);
+                        proxyHeaders: { "request": { "Referer": st.referer } },
+                    });
                 }
-                return { streams: streams };
+                return { streams };
             } catch (error) {
                 console.error('Stream extraction failed:', error);
                 return { streams: [] };
