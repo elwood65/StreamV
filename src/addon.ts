@@ -24,7 +24,7 @@ const baseManifest: Manifest = {
     types: ["movie", "series"],
     idPrefixes: ["tt"],
     catalogs: [],
-    resources: ["stream", "landingTemplate"],
+    resources: ["stream", "landingTemplate"] as any,
     behaviorHints: {
         configurable: true
     },
@@ -33,25 +33,25 @@ const baseManifest: Manifest = {
             key: "tmdbApiKey",
             title: "TMDB API Key",
             type: "password",
-            required: "true"
+            required: false
         },
         {
             key: "mediaFlowProxyUrl", 
             title: "MediaFlow Proxy URL (Optional)",
             type: "text",
-            required: "false"
+            required: false
         },
         {
             key: "mediaFlowProxyPassword",
             title: "MediaFlow Proxy Password (Optional)", 
             type: "password",
-            required: "false"
+            required: false
         },
         {
             key: "bothLinks",
             title: "Show Both Links (Proxy and Direct)",
             type: "checkbox",
-            required: "false"
+            required: false
         }
     ]
 };
@@ -125,13 +125,13 @@ function createBuilder(config: AddonConfig = {}) {
         }): Promise<{
             streams: Stream[];
         }> => {
+            // Salva le variabili d'ambiente originali
+            const originalMfpUrl = process.env.MFP_URL;
+            const originalMfpPsw = process.env.MFP_PSW;
+            const originalBothLink = process.env.BOTHLINK;
+            const originalTmdbKey = process.env.TMDB_API_KEY;
+
             try {
-                // Salva le variabili d'ambiente originali
-                const originalMfpUrl = process.env.MFP_URL;
-                const originalMfpPsw = process.env.MFP_PSW;
-                const originalBothLink = process.env.BOTHLINK;
-                const originalTmdbKey = process.env.TMDB_API_KEY;
-                
                 // Override delle variabili d'ambiente con i valori dalla configurazione URL
                 if (config.mediaFlowProxyUrl) {
                     process.env.MFP_URL = config.mediaFlowProxyUrl;
@@ -147,14 +147,7 @@ function createBuilder(config: AddonConfig = {}) {
                 if (config.bothLinks) {
                     process.env.BOTHLINK = config.bothLinks === 'on' ? 'true' : 'false';
                 }
-                
                 const res: VixCloudStreamInfo[] | null = await getStreamContent(id, type);
-
-                // Ripristina le variabili d'ambiente originali
-                process.env.MFP_URL = originalMfpUrl;
-                process.env.MFP_PSW = originalMfpPsw;
-                process.env.BOTHLINK = originalBothLink;
-                process.env.TMDB_API_KEY = originalTmdbKey;
 
                 if (!res) {
                     return { streams: [] };
