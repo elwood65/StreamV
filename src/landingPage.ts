@@ -185,6 +185,7 @@ function landingTemplate(manifest: any) {
 		manifest.config.forEach((elem: any) => {
 			const key = elem.key
 			if (['text', 'number', 'password'].includes(elem.type)) {
+				// elem.required è già un booleano grazie alla correzione in addon.ts
 				const isRequired = elem.required ? ' required' : ''
 				const defaultHTML = elem.default ? ` value="${elem.default}"` : ''
 				const inputType = elem.type
