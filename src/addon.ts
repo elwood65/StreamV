@@ -160,7 +160,7 @@ function createBuilder(config: AddonConfig = {}) {
                         url: st.streamUrl,
                         behaviorHints: {
                             notWebReady: true,
-                            proxyHeaders: { "request": { "Referer": st.referer } },
+                            headers: { "Referer": st.referer },
                         },
                     });
                 }
