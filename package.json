@@ -1,11 +1,10 @@
 {
     "name": "stremio-addon-streamvix",
     "version": "0.1.0",
-    "description": "A VixSrc extractor for Stremio",
     "main": "./dist/index.js",
     "scripts": {
-        "build": "tsc && cpx \"src/public/**/*\" dist/public",
-        "start": "node dist/index.js"
+        "start": "node dist/addon.js",
+        "build": "tsc && cpx \"src/public/**/*\" dist/public"
     },
     "dependencies": {
         "cheerio": "^1.0.0",
