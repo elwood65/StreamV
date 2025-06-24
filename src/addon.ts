@@ -37,15 +37,15 @@ const baseManifest: Manifest = {
         },
         {
             key: "mediaFlowProxyUrl", 
-            title: "MediaFlow Proxy URL (Optional)",
+            title: "MediaFlow Proxy URL (Rimuovere / finale!)",
             type: "text"        },
         {
             key: "mediaFlowProxyPassword",
-            title: "MediaFlow Proxy Password (Optional)", 
+            title: "MediaFlow Proxy Password ", 
             type: "password"        },
         {
             key: "bothLinks",
-            title: "Show Both Links (Proxy and Direct)",
+            title: "Mostra entrambi i link (Proxy e Direct)",
             type: "checkbox"
         }
     ]
