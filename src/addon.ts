@@ -1,4 +1,4 @@
-import { addonBuilder, getRouter } from "stremio-addon-sdk";
+import { addonBuilder, getRouter, Manifest, Stream } from "stremio-addon-sdk";
 import { getStreamContent, VixCloudStreamInfo } from "./extractor";
 import * as fs from 'fs';
 import { landingTemplate } from './landingPage';
