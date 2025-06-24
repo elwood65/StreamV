@@ -109,7 +109,7 @@ function createBuilder(config: AddonConfig = {}) {
     
     // Modifica il manifest in base alla configurazione
     if (config.mediaFlowProxyUrl || config.bothLinks || config.tmdbApiKey) {
-        manifest.name += ' (Configured)';
+        manifest.name;
     }
     
     const builder = new addonBuilder(manifest);
