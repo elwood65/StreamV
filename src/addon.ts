@@ -34,6 +34,7 @@ const baseManifest: Manifest = {
             title: "TMDB API Key",
             type: "password",
             required: false
+        },
         {
             key: "mediaFlowProxyUrl", 
             title: "MediaFlow Proxy URL (Optional)",
