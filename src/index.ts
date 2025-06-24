@@ -20,7 +20,7 @@ const serveLandingPage = async (req: express.Request, res: express.Response) => 
             resource: 'landingTemplate' as any,
             type: 'movie' as ContentType, 
             id: 'landing',
-            extra: {} // Aggiunto extra
+            extra: {} as any // Aggiunto extra per soddisfare il tipo Args
         });
         res.setHeader('Content-Type', 'text/html');
         res.send(landingHTML);
@@ -54,7 +54,7 @@ app.get('/stream/:type/:id.json', async (req, res) => {
             resource: 'stream', 
             type: type as ContentType, 
             id,
-            extra: {} // Aggiunto extra
+            extra: {} as any // Aggiunto extra per soddisfare il tipo Args
         });
         res.json(result);
     } catch (error) {
@@ -87,7 +87,7 @@ app.get('/:config/stream/:type/:id.json', async (req, res) => {
             resource: 'stream', 
             type: type as ContentType, 
             id,
-            extra: {} // Aggiunto extra
+            extra: {} as any // Aggiunto extra per soddisfare il tipo Args
         });
         res.json(result);
     } catch (error) {
