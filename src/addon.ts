@@ -1,6 +1,7 @@
 import { addonBuilder, Manifest, Stream } from "stremio-addon-sdk";
 import { getStreamContent, VixCloudStreamInfo } from "./extractor";
 import * as fs from 'fs';
+import { landingTemplate } from './landingPage'; // Import the new landingTemplate
 import * as path from 'path';
 
 // Interfaccia per la configurazione URL
