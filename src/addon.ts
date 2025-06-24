@@ -1,8 +1,9 @@
 import { addonBuilder, Manifest, Stream } from "stremio-addon-sdk";
 import { getStreamContent, VixCloudStreamInfo } from "./extractor";
 import * as fs from 'fs';
-import { landingTemplate } from './landingPage'; // Import the new landingTemplate
+import { landingTemplate } from './landingPage';
 import * as path from 'path';
+import express from 'express';
 
 // Interfaccia per la configurazione URL
 interface AddonConfig {
@@ -24,7 +25,7 @@ const baseManifest: Manifest = {
     types: ["movie", "series"],
     idPrefixes: ["tt"],
     catalogs: [],
-    resources: ["stream", "landingTemplate"],
+    resources: ["stream"], // Rimosso "landingTemplate" che non è più una risorsa valida
     behaviorHints: {
         configurable: true
     },
@@ -33,25 +34,25 @@ const baseManifest: Manifest = {
             key: "tmdbApiKey",
             title: "TMDB API Key",
             type: "password",
-            required: "true" // Modificato a stringa
+            required: true // Corretto a booleano
         },
         {
             key: "mediaFlowProxyUrl", 
             title: "MediaFlow Proxy URL (Optional)",
             type: "text",
-            required: "false" // Modificato a stringa
+            required: false // Corretto a booleano
         },
         {
             key: "mediaFlowProxyPassword",
             title: "MediaFlow Proxy Password (Optional)", 
             type: "password",
-            required: "false" // Modificato a stringa
+            required: false // Corretto a booleano
         },
         {
             key: "bothLinks",
             title: "Show Both Links (Proxy and Direct)",
             type: "checkbox",
-            required: "false" // Modificato a stringa
+            required: false // Corretto a booleano
         }
     ]
 };
@@ -89,11 +90,12 @@ function parseConfigFromArgs(args: any): AddonConfig {
     // Se args è una stringa, prova a decodificarla come JSON
     if (typeof args === 'string') {
         try {
-            const decoded = decodeURIComponent(args);
+            // La configurazione nell'URL di Stremio è codificata in base64
+            const decoded = Buffer.from(args, 'base64').toString('utf8');
             const parsed = JSON.parse(decoded);
             return parsed;
         } catch (error) {
-            console.error('Error parsing config from URL:', error);
+            // Ignora l'errore se non è un JSON valido o non è codificato
             return {};
         }
     }
@@ -179,26 +181,40 @@ function createBuilder(config: AddonConfig = {}) {
         }
     );
 
-    (builder as any).defineLandingTemplate((args: { manifest: Manifest }) => {
-        const manifest = args.manifest;
-        const landingHTML = landingTemplate(manifest);
-        return Promise.resolve(landingHTML);
-    });
+    // La riga seguente è stata rimossa perché 'defineLandingTemplate' è obsoleto.
+    // La landing page verrà servita da Express.
+    // (builder as any).defineLandingTemplate(...)
 
     return builder;
 }
 
-// Export per l'uso normale (senza configurazione)
-export const addon = createBuilder();
-export default addon.getInterface();
+// --- Inizio del nuovo server Express ---
 
-// Export per l'uso con configurazione dinamica
-export function createConfiguredAddon(configString: string) {
+const app = express();
+
+// Serve i file statici (icona, sfondo) dalla directory public
+// Assumendo che la cartella 'public' sia nella root del progetto, accanto a 'src'
+app.use('/public', express.static(path.join(__dirname, '..', 'public')));
+
+// Route per la landing page
+app.get('/', (_, res) => {
+    const manifest = loadCustomConfig(); // Usa il manifest per generare la pagina
+    const landingHTML = landingTemplate(manifest);
+    res.setHeader('Content-Type', 'text/html');
+    res.send(landingHTML);
+});
+
+// Middleware che crea dinamicamente l'interfaccia dell'addon per ogni richiesta
+// Questo preserva la tua logica di configurazione dinamica
+app.use((req, res) => {
+    // Stremio passa la configurazione come primo segmento del path, codificato in base64
+    const configString = req.path.split('/')[1];
     const config = parseConfigFromArgs(configString);
-    console.log('Creating addon with config:', {
-        ...config,
-        tmdbApiKey: config.tmdbApiKey ? '[PROVIDED]' : '[NOT PROVIDED]',
-        mediaFlowProxyPassword: config.mediaFlowProxyPassword ? '[PROVIDED]' : '[NOT PROVIDED]'
-    });
-    return createBuilder(config);
-}
+    const builder = createBuilder(config);
+    builder.getInterface()(req, res);
+});
+
+const PORT = process.env.PORT || 7860;
+app.listen(PORT, () => {
+    console.log(`Addon server running on http://127.0.0.1:${PORT}`);
+});
