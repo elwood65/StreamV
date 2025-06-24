@@ -15,11 +15,12 @@ app.use('/public', express.static('public'));
 
 const serveLandingPage = async (req: express.Request, res: express.Response) => {
     try {
-        // Usa un cast esplicito per aggirare il controllo di tipo
+        // Aggiungi extra: {} per soddisfare il tipo Args
         const landingHTML = await addonInterface.get({ 
             resource: 'landingTemplate' as any,
             type: 'movie' as ContentType, 
-            id: 'landing'
+            id: 'landing',
+            extra: {} // Aggiunto extra
         });
         res.setHeader('Content-Type', 'text/html');
         res.send(landingHTML);
@@ -48,11 +49,12 @@ app.get('/manifest.json', async (req, res) => {
 app.get('/stream/:type/:id.json', async (req, res) => {
     try {
         const { type, id } = req.params;
-        // Cast esplicito di type a ContentType
+        // Aggiungi extra: {} per soddisfare il tipo Args
         const result = await addonInterface.get({ 
             resource: 'stream', 
             type: type as ContentType, 
-            id 
+            id,
+            extra: {} // Aggiunto extra
         });
         res.json(result);
     } catch (error) {
@@ -80,11 +82,12 @@ app.get('/:config/stream/:type/:id.json', async (req, res) => {
     try {
         const { config, type, id } = req.params;
         const configuredAddon = createConfiguredAddon(config);
-        // Cast esplicito di type a ContentType
+        // Aggiungi extra: {} per soddisfare il tipo Args
         const result = await configuredAddon.getInterface().get({ 
             resource: 'stream', 
             type: type as ContentType, 
-            id 
+            id,
+            extra: {} // Aggiunto extra
         });
         res.json(result);
     } catch (error) {
