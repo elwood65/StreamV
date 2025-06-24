@@ -6,18 +6,16 @@ const VIXCLOUD_SITE_ORIGIN = "https://vixsrc.to"; // e.g., "https://vixcloud.co"
 const VIXCLOUD_REQUEST_TITLE_PATH = "/richiedi-un-titolo"; // Path used to fetch site version
 const VIXCLOUD_EMBED_BASE_PATH = "/embed"; // Base path for embed URLs, e.g., /embed/movie/tt12345
 // --- TMDB Configuration ---
-const TMDB_API_KEY = process.env.TMDB_API_KEY; 
 const TMDB_API_BASE_URL = "https://api.themoviedb.org/3";
-// --- Proxy Configuration ---
-const MFP_URL = process.env.MFP_URL; // Proxy URL
-const MFP_PSW = process.env.MFP_PSW; // Proxy Password
-// --- BOTHLINK Configuration ---
-const BOTHLINK = process.env.BOTHLINK?.toLowerCase() === 'true'; // Mostra entrambi i link se true
-console.log("MFP_URL from env:", MFP_URL);
-console.log("MFP_PSW from env:", MFP_PSW);
-console.log("BOTHLINK from env:", BOTHLINK);
 
 // --- End Configuration ---
+
+export interface ExtractorConfig {
+  tmdbApiKey?: string;
+  mfpUrl?: string;
+  mfpPsw?: string;
+  bothLink?: boolean;
+}
 
 export interface VixCloudStreamInfo {
   name: string;
@@ -74,12 +72,12 @@ function getObject(id: string) {
   };
 }
 
-async function getTmdbIdFromImdbId(imdbId: string): Promise<string | null> {
-  if (!TMDB_API_KEY) { 
+async function getTmdbIdFromImdbId(imdbId: string, tmdbApiKey?: string): Promise<string | null> {
+  if (!tmdbApiKey) { 
     console.error("TMDB_API_KEY is not configured.");
     return null;
   }
-  const findUrl = `${TMDB_API_BASE_URL}/find/${imdbId}?api_key=${TMDB_API_KEY}&external_source=imdb_id`;
+  const findUrl = `${TMDB_API_BASE_URL}/find/${imdbId}?api_key=${tmdbApiKey}&external_source=imdb_id`;
   try {
     const response = await fetch(findUrl);
     if (!response.ok) {
@@ -129,10 +127,10 @@ async function checkTmdbIdOnVixSrc(tmdbId: string, type: ContentType): Promise<b
 }
 
 // 2. Modifica la funzione getUrl per rimuovere ?lang=it e aggiungere la verifica
-export async function getUrl(id: string, type: ContentType): Promise<string | null> {
+export async function getUrl(id: string, type: ContentType, config: ExtractorConfig): Promise<string | null> {
   if (type == "movie") {
     const imdbIdForMovie = id; // L'ID passato è l'IMDB ID per i film
-    const tmdbId = await getTmdbIdFromImdbId(imdbIdForMovie);
+    const tmdbId = await getTmdbIdFromImdbId(imdbIdForMovie, config.tmdbApiKey);
     if (!tmdbId) return null;
     
     // Verifica se l'ID TMDB del film esiste su VixSrc
@@ -146,7 +144,7 @@ export async function getUrl(id: string, type: ContentType): Promise<string | nu
   } else {
     // Series: https://vixsrc.to/tv/tmdbkey/season/episode/
     const obj = getObject(id);
-    const tmdbSeriesId = await getTmdbIdFromImdbId(obj.id);
+    const tmdbSeriesId = await getTmdbIdFromImdbId(obj.id, config.tmdbApiKey);
     if (!tmdbSeriesId) return null;
     
     // Verifica se l'ID TMDB della serie esiste su VixSrc
@@ -160,21 +158,22 @@ export async function getUrl(id: string, type: ContentType): Promise<string | nu
   }
 }
 
-async function getStreamContent(id: string, type: ContentType): Promise<VixCloudStreamInfo[] | null> {
-  console.log(`Extracting stream for ${id} (${type})`);
+export async function getStreamContent(id: string, type: ContentType, config: ExtractorConfig): Promise<VixCloudStreamInfo[] | null> {
+  // Log config safely without exposing password
+  console.log(`Extracting stream for ${id} (${type}) with config:`, { ...config, mfpPsw: config.mfpPsw ? '***' : undefined });
   
   // First, get the target URL on vixsrc.to (this is needed for both proxy and direct modes)
-  const targetUrl = await getUrl(id, type);
+  const targetUrl = await getUrl(id, type, config);
   if (!targetUrl) {
     console.error(`Could not generate target URL for ${id} (${type})`);
     return null;
   }
 
   // Helper function to fetch movie title from TMDB
-  async function getMovieTitle(imdbId: string): Promise<string | null> {
-    const tmdbId = await getTmdbIdFromImdbId(imdbId);
+  async function getMovieTitle(imdbId: string, tmdbApiKey?: string): Promise<string | null> {
+    const tmdbId = await getTmdbIdFromImdbId(imdbId, tmdbApiKey);
     if (!tmdbId) return null;
-    const movieDetailsUrl = `${TMDB_API_BASE_URL}/movie/${tmdbId}?api_key=${TMDB_API_KEY}&language=it`;
+    const movieDetailsUrl = `${TMDB_API_BASE_URL}/movie/${tmdbId}?api_key=${tmdbApiKey}&language=it`;
     try {
       const response = await fetch(movieDetailsUrl);
       if (!response.ok) {
@@ -190,10 +189,10 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   }
 
   // Helper function to fetch series title from TMDB
-  async function getSeriesTitle(imdbId: string): Promise<string | null> {
-    const tmdbId = await getTmdbIdFromImdbId(imdbId.split(':')[0]); // Use base IMDB ID for series
+  async function getSeriesTitle(imdbId: string, tmdbApiKey?: string): Promise<string | null> {
+    const tmdbId = await getTmdbIdFromImdbId(imdbId.split(':')[0], tmdbApiKey); // Use base IMDB ID for series
     if (!tmdbId) return null;
-    const seriesDetailsUrl = `${TMDB_API_BASE_URL}/tv/${tmdbId}?api_key=${TMDB_API_KEY}&language=it`;
+    const seriesDetailsUrl = `${TMDB_API_BASE_URL}/tv/${tmdbId}?api_key=${tmdbApiKey}&language=it`;
     try {
       const response = await fetch(seriesDetailsUrl);
       if (!response.ok) {
@@ -209,11 +208,12 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   }
 
   // Funzione per ottenere il proxy stream
-  async function getProxyStream(url: string): Promise<VixCloudStreamInfo | null> {
-    if (!MFP_URL || !MFP_PSW) {
+  async function getProxyStream(url: string, id: string, type: ContentType, config: ExtractorConfig): Promise<VixCloudStreamInfo | null> {
+    const { mfpUrl, mfpPsw, bothLink, tmdbApiKey } = config;
+    if (!mfpUrl || !mfpPsw) {
       // Se BOTHLINK è true ma manca il proxy, restituisci un placeholder
-      if (BOTHLINK) {
-        const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
+      if (bothLink) {
+        const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id, tmdbApiKey) : await getSeriesTitle(id, tmdbApiKey);
         let fallbackName = 'Proxy Missing';
         
         if (tmdbApiTitle) {
@@ -235,7 +235,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
       return null;
     }
 
-    const proxyStreamUrl = `${MFP_URL}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${MFP_PSW}&d=${encodeURIComponent(url)}`;
+    const proxyStreamUrl = `${mfpUrl}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${mfpPsw}&d=${encodeURIComponent(url)}`;
     console.log(`Proxy mode active. Generated proxy URL for ${id}: ${proxyStreamUrl}`);
 
     // Nuova funzione asincrona per ottenere l'URL m3u8 finale
@@ -302,7 +302,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     }
 
     // Ottieni il titolo dalla TMDB API
-    const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id) : await getSeriesTitle(id);
+    const tmdbApiTitle = type === 'movie' ? await getMovieTitle(id, tmdbApiKey) : await getSeriesTitle(id, tmdbApiKey);
 
     // Determina il nome finale per il proxy stream
     let finalNameForProxy: string;
@@ -336,7 +336,7 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   }
 
   // Funzione per ottenere il direct stream
-  async function getDirectStream(url: string): Promise<VixCloudStreamInfo | null> {
+  async function getDirectStream(url: string, id: string, type: ContentType, config: ExtractorConfig): Promise<VixCloudStreamInfo | null> {
     // The 'url' parameter is guaranteed to be a string, so no more null checks needed here.
     const siteOrigin = new URL(url).origin;
     let pageHtml = "";
@@ -416,8 +416,8 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
 
       // Prima prova a ottenere il titolo dalle API TMDB
       baseTitle = type === 'movie' ? 
-        await getMovieTitle(id) : 
-        await getSeriesTitle(id);
+        await getMovieTitle(id, config.tmdbApiKey) : 
+        await getSeriesTitle(id, config.tmdbApiKey);
       
       console.log(`TMDB title result: "${baseTitle}"`);
     
@@ -481,12 +481,12 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
   // --- Logica principale basata su BOTHLINK ---
   const results: VixCloudStreamInfo[] = [];
 
-  if (BOTHLINK) {
+  if (config.bothLink) {
     // Se BOTHLINK è true, ottieni entrambi i stream
     console.log('BOTHLINK mode: fetching both proxy and direct streams');
     
-    const proxyStream = await getProxyStream(targetUrl);
-    const directStream = await getDirectStream(targetUrl);
+    const proxyStream = await getProxyStream(targetUrl, id, type, config);
+    const directStream = await getDirectStream(targetUrl, id, type, config);
     
     if (proxyStream) results.push(proxyStream);
     if (directStream) results.push(directStream);
@@ -494,16 +494,14 @@ async function getStreamContent(id: string, type: ContentType): Promise<VixCloud
     return results.length > 0 ? results : null;
   } else {
     // Logica originale: proxy se configurato, altrimenti direct
-    if (MFP_URL && MFP_PSW) {
+    if (config.mfpUrl && config.mfpPsw) {
       // --- Proxy Mode ---
-      const proxyStream = await getProxyStream(targetUrl);
+      const proxyStream = await getProxyStream(targetUrl, id, type, config);
       return proxyStream ? [proxyStream] : null;
     } else {
       // --- Direct Extraction Mode (if proxy not configured) ---
-      const directStream = await getDirectStream(targetUrl);
+      const directStream = await getDirectStream(targetUrl, id, type, config);
       return directStream ? [directStream] : null;
     }
   }
 }
-
-export { getStreamContent };
