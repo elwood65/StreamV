@@ -85,7 +85,7 @@ function parseConfigFromArgs(args: any): AddonConfig {
     if (typeof args === 'string') {
         try {
             // La configurazione nell'URL di Stremio è codificata in base64
-            const decoded = Buffer.from(args, 'base64').toString('utf8');
+            const decoded = decodeURIComponent(args);
             const parsed = JSON.parse(decoded);
             return parsed;
         } catch (error) {
