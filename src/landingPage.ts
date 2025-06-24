@@ -169,10 +169,10 @@ function landingTemplate(manifest: any) {
 	const background = manifest.background || 'https://dl.strem.io/addon-background.jpg'
 	const logo = manifest.logo || 'https://dl.strem.io/addon-logo.png'
 	const contactHTML = manifest.contactEmail ?
-		`&lt;div class="contact"&gt;
-			&lt;p&gt;Contact ${manifest.name} creator:&lt;/p&gt;
-			&lt;a href="mailto:${manifest.contactEmail}"&gt;${manifest.contactEmail}&lt;/a&gt;
-		&lt;/div&gt;` : ''
+		`<div class="contact">
+			<p>Contact ${manifest.name} creator:</p>
+			<a href="mailto:${manifest.contactEmail}">${manifest.contactEmail}</a>
+		</div>` : ''
 
 	const stylizedTypes = manifest.types
 		.map((t: string) => t[0].toUpperCase() + t.slice(1) + (t !== 'series' ? 's' : ''))
@@ -185,48 +185,47 @@ function landingTemplate(manifest: any) {
 		manifest.config.forEach((elem: any) => {
 			const key = elem.key
 			if (['text', 'number', 'password'].includes(elem.type)) {
-				// elem.required è già un booleano grazie alla correzione in addon.ts
 				const isRequired = elem.required ? ' required' : ''
 				const defaultHTML = elem.default ? ` value="${elem.default}"` : ''
 				const inputType = elem.type
 				options += `
-				&lt;div class="form-element"&gt;
-					&lt;div class="label-to-top"&gt;${elem.title}&lt;/div&gt;
-					&lt;input type="${inputType}" id="${key}" name="${key}" class="full-width"${defaultHTML}${isRequired}/&gt;
-				&lt;/div&gt;
+				<div class="form-element">
+					<div class="label-to-top">${elem.title}</div>
+					<input type="${inputType}" id="${key}" name="${key}" class="full-width"${defaultHTML}${isRequired}/>
+				</div>
 				`
 			} else if (elem.type === 'checkbox') {
 				const isChecked = elem.default === 'checked' ? ' checked' : ''
 				options += `
-				&lt;div class="form-element"&gt;
-					&lt;label for="${key}"&gt;
-						&lt;input type="checkbox" id="${key}" name="${key}"${isChecked}&gt; &lt;span class="label-to-right"&gt;${elem.title}&lt;/span&gt;
-					&lt;/label&gt;
-				&lt;/div&gt;
+				<div class="form-element">
+					<label for="${key}">
+						<input type="checkbox" id="${key}" name="${key}"${isChecked}> <span class="label-to-right">${elem.title}</span>
+					</label>
+				</div>
 				`
 			} else if (elem.type === 'select') {
 				const defaultValue = elem.default || (elem.options || [])[0]
-				options += `&lt;div class="form-element"&gt;
-				&lt;div class="label-to-top"&gt;${elem.title}&lt;/div&gt;
-				&lt;select id="${key}" name="${key}" class="full-width"&gt;
+				options += `<div class="form-element">
+				<div class="label-to-top">${elem.title}</div>
+				<select id="${key}" name="${key}" class="full-width">
 				`
 				const selections = elem.options || []
 				selections.forEach((el: string) => {
 					const isSelected = el === defaultValue ? ' selected' : ''
-					options += `&lt;option value="${el}"${isSelected}&gt;${el}&lt;/option&gt;`
+					options += `<option value="${el}"${isSelected}>${el}</option>`
 				})
-				options += `&lt;/select&gt;
-               &lt;/div&gt;
+				options += `</select>
+               </div>
                `
 			}
 		})
 		if (options.length) {
 			formHTML = `
-			&lt;form class="pure-form" id="mainForm"&gt;
+			<form class="pure-form" id="mainForm">
 				${options}
-			&lt;/form&gt;
+			</form>
 
-			&lt;div class="separator"&gt;&lt;/div&gt;
+			<div class="separator"></div>
 			`
 			script += `
 			installLink.onclick = () => {
@@ -242,54 +241,54 @@ function landingTemplate(manifest: any) {
 	}
 
 	return `
-	&lt;!DOCTYPE html&gt;
-	&lt;html style="background-image: url(${background});"&gt;
+	<!DOCTYPE html>
+	<html style="background-image: url(${background});">
 
-	&lt;head&gt;
-		&lt;meta charset="utf-8"&gt;
-		&lt;title&gt;${manifest.name} - Stremio Addon&lt;/title&gt;
-		&lt;style&gt;${STYLESHEET}&lt;/style&gt;
-		&lt;link rel="shortcut icon" href="${logo}" type="image/x-icon"&gt;
-		&lt;link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet"&gt;
-		&lt;link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/pure-min.css" integrity="sha384-yHIFVG6ClnONEA5yB5DJXfW2/KC173DIQrYoZMEtBvGzmf0PKiGyNEqe9N6BNDBH" crossorigin="anonymous"&gt;
-	&lt;/head&gt;
+	<head>
+		<meta charset="utf-8">
+		<title>${manifest.name} - Stremio Addon</title>
+		<style>${STYLESHEET}</style>
+		<link rel="shortcut icon" href="${logo}" type="image/x-icon">
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap" rel="stylesheet">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/pure-min.css" integrity="sha384-yHIFVG6ClnONEA5yB5DJXfW2/KC173DIQrYoZMEtBvGzmf0PKiGyNEqe9N6BNDBH" crossorigin="anonymous">
+	</head>
 
-	&lt;body&gt;
-		&lt;div id="addon"&gt;
-			&lt;div class="logo"&gt;
-			&lt;img src="${logo}"&gt;
-			&lt;/div&gt;
-			&lt;h1 class="name"&gt;${manifest.name}&lt;/h1&gt;
-			&lt;h2 class="version"&gt;v${manifest.version || '0.0.0'}&lt;/h2&gt;
-			&lt;h2 class="description"&gt;${manifest.description || ''}&lt;/h2&gt;
+	<body>
+		<div id="addon">
+			<div class="logo">
+			<img src="${logo}">
+			</div>
+			<h1 class="name">${manifest.name}</h1>
+			<h2 class="version">v${manifest.version || '0.0.0'}</h2>
+			<h2 class="description">${manifest.description || ''}</h2>
 
-			&lt;div class="separator"&gt;&lt;/div&gt;
+			<div class="separator"></div>
 
-			&lt;h3 class="gives"&gt;This addon has more :&lt;/h3&gt;
-			&lt;ul&gt;
-			${stylizedTypes.map((t: string) => `&lt;li&gt;${t}&lt;/li&gt;`).join('')}
-			&lt;/ul&gt;
+			<h3 class="gives">This addon has more :</h3>
+			<ul>
+			${stylizedTypes.map((t: string) => `<li>${t}</li>`).join('')}
+			</ul>
 
-			&lt;div class="separator"&gt;&lt;/div&gt;
+			<div class="separator"></div>
 
 			${formHTML}
 
-			&lt;a id="installLink" class="install-link" href="#"&gt;
-			&lt;button name="Install"&gt;INSTALL&lt;/button&gt;
-			&lt;/a&gt;
+			<a id="installLink" class="install-link" href="#">
+			<button name="Install">INSTALL</button>
+			</a>
 			${contactHTML}
-		&lt;/div&gt;
-		&lt;script&gt;
+		</div>
+		<script>
 			${script}
 
 			if (typeof updateLink === 'function')
 			updateLink()
 			else
 			installLink.href = 'stremio://' + window.location.host + '/manifest.json'
-		&lt;/script&gt;
-	&lt;/body&gt;
+		</script>
+	</body>
 
-	&lt;/html&gt;`
+	</html>`
 }
 
 export { landingTemplate };
