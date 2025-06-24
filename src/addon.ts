@@ -32,25 +32,25 @@ const baseManifest: Manifest = {
             key: "tmdbApiKey",
             title: "TMDB API Key",
             type: "password",
-            required: true
+            required: "true" // Modificato da boolean a string
         },
         {
             key: "mediaFlowProxyUrl", 
             title: "MediaFlow Proxy URL (Optional)",
             type: "text",
-            required: false
+            required: "false" // Modificato da boolean a string
         },
         {
             key: "mediaFlowProxyPassword",
             title: "MediaFlow Proxy Password (Optional)", 
             type: "password",
-            required: false
+            required: "false" // Modificato da boolean a string
         },
         {
             key: "bothLinks",
             title: "Show Both Links (Proxy and Direct)",
             type: "checkbox",
-            required: false
+            required: "false" // Modificato da boolean a string
         }
     ]
 };
