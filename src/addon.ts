@@ -24,7 +24,7 @@ const baseManifest: Manifest = {
     types: ["movie", "series"],
     idPrefixes: ["tt"],
     catalogs: [],
-    resources: ["stream"],
+    resources: ["stream", "landingTemplate"],
     behaviorHints: {
         configurable: true
     },
@@ -33,25 +33,24 @@ const baseManifest: Manifest = {
             key: "tmdbApiKey",
             title: "TMDB API Key",
             type: "password",
-            required: "true" // Modificato da boolean a string
-        },
+            required: false
         {
             key: "mediaFlowProxyUrl", 
             title: "MediaFlow Proxy URL (Optional)",
             type: "text",
-            required: "false" // Modificato da boolean a string
+            required: false
         },
         {
             key: "mediaFlowProxyPassword",
             title: "MediaFlow Proxy Password (Optional)", 
             type: "password",
-            required: "false" // Modificato da boolean a string
+            required: false
         },
         {
             key: "bothLinks",
             title: "Show Both Links (Proxy and Direct)",
             type: "checkbox",
-            required: "false" // Modificato da boolean a string
+            required: false
         }
     ]
 };
