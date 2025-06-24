@@ -186,7 +186,7 @@ function createBuilder(config: AddonConfig = {}) {
         }
     );
 
-    builder.defineLandingTemplate(args => {
+    (builder as any).defineLandingTemplate((args: { manifest: Manifest }) => {
         const manifest = args.manifest;
         const landingHTML = landingTemplate(manifest);
         return Promise.resolve(landingHTML);
