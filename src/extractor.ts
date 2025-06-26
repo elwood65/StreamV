@@ -235,7 +235,8 @@ export async function getStreamContent(id: string, type: ContentType, config: Ex
       return null;
     }
 
-    const proxyStreamUrl = `${mfpUrl}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${mfpPsw}&d=${encodeURIComponent(url)}`;
+    const cleanedMfpUrl = mfpUrl.endsWith('/') ? mfpUrl.slice(0, -1) : mfpUrl;
+    const proxyStreamUrl = `${cleanedMfpUrl}/extractor/video?host=VixCloud&redirect_stream=true&api_password=${mfpPsw}&d=${encodeURIComponent(url)}`;    
     console.log(`Proxy mode active. Generated proxy URL for ${id}: ${proxyStreamUrl}`);
 
     // Nuova funzione asincrona per ottenere l'URL m3u8 finale
