@@ -17,6 +17,8 @@ Un addon per Stremio che estrae sorgenti streaming dal sito vixsrc per permetter
 
 Puoi installare StreamViX in tre modi diversi, a seconda delle tue esigenze.
 
+Oppure usare questa versione, serve solo aggiungere la TMDB api key e MFP url e psw
+https://streamvix-streamvix.hf.space
 ---
 
 ### 🚀 Metodo 1: Hugging Face (Consigliato per Tutti)
@@ -39,7 +41,7 @@ Questo metodo ti permette di avere la tua istanza personale dell'addon online, g
     * **Visibilità:** Assicurati che sia `Public`.
     * Clicca su `Create Space`.
 
-2.  **Aggiungi i Secrets 🔐**
+2.  **Aggiungi i Secrets 🔐** (Opzionale se inseriti durate l'installazione)
     * Nel tuo nuovo Space, vai sulla scheda `Settings`.
     * Nella sezione `Variables and secrets`, clicca su `New secret`.
     * Aggiungi i seguenti tre secrets, uno alla volta, facendo attenzione a scrivere correttamente i nomi:
